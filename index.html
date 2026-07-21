@@ -7,13 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    
+    <!-- PWA Манифест и Тема -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="КотоМедик">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4f46e5">
     
     <style>
         body {
@@ -121,7 +123,7 @@
         </div>
     </div>
 
-    <!-- Основной контент (Здесь работает свайп) -->
+    <!-- Основной контент -->
     <main class="flex-grow max-w-md w-full mx-auto px-4 py-4 pb-28" id="swipe-container">
         
         <div id="content-today" class="space-y-4 fade-in">
@@ -187,7 +189,37 @@
         </div>
     </nav>
 
-    <!-- МОДАЛКИ (Сокращены для экономии места, логика идентична прошлой версии) -->
+    <!-- ПРИВЕТСТВЕННОЕ ОКНО (ONBOARDING) -->
+    <div id="welcomeModal" class="fixed inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl fade-in overflow-hidden">
+            <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-center text-white">
+                <div class="text-6xl mb-3">🐾</div>
+                <h2 class="text-2xl font-bold">Добро пожаловать!</h2>
+                <p class="text-indigo-100 text-sm mt-1">Спасибо, что выбрали КотоМедик</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-3 text-left text-sm text-slate-600">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="calendar-check" class="w-4 h-4"></i></div>
+                        <span>Создавайте расписания уколов и таблеток</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="bell-ring" class="w-4 h-4"></i></div>
+                        <span>Получайте напоминания о приеме лекарств</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="cat" class="w-4 h-4"></i></div>
+                        <span>Добавляйте всех своих пушистых пациентов</span>
+                    </div>
+                </div>
+                <button onclick="closeWelcomeModal()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm transition-colors">
+                    Начать!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКИ -->
     
     <!-- МОДАЛКА: ПИТОМЕЦ -->
     <div id="addPetModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
@@ -279,11 +311,9 @@
                 <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-5 space-y-4">
-                <!-- Кнопка запроса разрешений на уведомления -->
                 <button onclick="requestNotifPermission()" id="notif-perm-btn" class="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold text-sm hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
                     <i data-lucide="bell-ring" class="w-4 h-4"></i> Включить системные уведомления
                 </button>
-                
                 <button onclick="exportData()" class="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-semibold text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i> Экспорт данных (JSON)
                 </button>
@@ -317,6 +347,7 @@
 <script>
 // ==================== КОНСТАНТЫ И СОСТОЯНИЕ ====================
 const STORAGE_KEY = 'kotomedic_data';
+const WELCOME_KEY = 'kotomedic_welcomed';
 const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🦎', '🐵'];
 const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -326,9 +357,7 @@ let state = { pets: [], meds: [], completions: {} };
 let selectedDate = new Date();
 let currentPetAvatar = '🐱';
 let currentPetPhoto = null;
-let activeTabIdx = 0; // Для свайпов
-
-// Множество для предотвращения повторных уведомлений
+let activeTabIdx = 0;
 let firedAlerts = new Set();
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -341,11 +370,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSwipeGestures();
     startNotificationChecker();
     updateNotifButtonUI();
+    checkFirstVisit(); // Проверка первого запуска
     lucide.createIcons();
 });
 
 function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
 function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ alert("Закончилось место! Удалите фото питомцев."); } }
+
+// ==================== ПРИВЕТСТВЕННОЕ ОКНО ====================
+function checkFirstVisit() {
+    if (!localStorage.getItem(WELCOME_KEY)) {
+        openModal('welcomeModal');
+    }
+}
+
+function closeWelcomeModal() {
+    closeModal('welcomeModal');
+    localStorage.setItem(WELCOME_KEY, 'true');
+}
 
 // ==================== СВАЙПЫ И ЖЕСТЫ ====================
 function setupSwipeGestures() {
@@ -365,14 +407,11 @@ function setupSwipeGestures() {
 
 function handleSwipe(startX, endX) {
     const diff = startX - endX;
-    // Порог 80px, чтобы не конфликтовать со скроллом
     if (Math.abs(diff) < 80) return;
 
     if (diff > 0 && activeTabIdx < TABS.length - 1) {
-        // Свайп влево (вперед)
         switchTab(TABS[activeTabIdx + 1], activeTabIdx + 1);
     } else if (diff < 0 && activeTabIdx > 0) {
-        // Свайп вправо (назад)
         switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
     }
 }
@@ -403,7 +442,6 @@ function updateNotifButtonUI() {
 }
 
 function startNotificationChecker() {
-    // Проверяем каждую минуту
     setInterval(() => {
         const now = new Date();
         const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -412,18 +450,11 @@ function startNotificationChecker() {
 
         tasks.forEach(task => {
             const alertId = `${dateStr}_${task.id}`;
-            
-            // Если время совпало, задача не выполнена и уведомление еще не бросали
             if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
-                firedAlerts.add(alertId); // Блокируем повторный показ
-                
+                firedAlerts.add(alertId);
                 const msg = `${task.petName}: ${task.name} (${task.dosage})`;
-                
-                // 1. In-App Toast (всегда работает)
                 showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
-                playCompletionSound(); // Звуковой сигнал
-                
-                // 2. Системное Push-уведомление браузера (если есть права)
+                playCompletionSound();
                 if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification('КотоМедик: Пора дать лекарство!', {
                         body: msg,
@@ -432,16 +463,14 @@ function startNotificationChecker() {
                 }
             }
         });
-    }, 60000); // 60000 мс = 1 минута
+    }, 60000);
 }
 
-// Красивое всплывающее уведомление внутри приложения
 function showToast(title, body, icon = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = 'toast-enter bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3 w-full max-w-sm pointer-events-auto cursor-pointer';
     toast.onclick = () => removeToast(toast);
-    
     toast.innerHTML = `
         <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl flex-shrink-0">
             <i data-lucide="${icon}" class="w-5 h-5"></i>
@@ -451,11 +480,8 @@ function showToast(title, body, icon = 'info') {
             <p class="text-xs text-slate-500 mt-0.5">${body}</p>
         </div>
     `;
-    
     container.appendChild(toast);
     lucide.createIcons();
-    
-    // Авто-скрытие через 5 секунд
     setTimeout(() => removeToast(toast), 5000);
 }
 
@@ -595,19 +621,17 @@ function clearAllData() { if(confirm("Удалить ВСЕ данные?")){loc
 // ==================== ОБЩИЙ РЕНДЕР ====================
 function renderAll() { renderPets(); renderMeds(); renderSchedule(); updateStats(); lucide.createIcons(); }
 </script>
+
+<!-- PWA: Регистрация Service Worker -->
 <script>
-  // Регистрация Service Worker для PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        })
-        .catch(err => {
-          console.log('ServiceWorker registration failed: ', err);
-        });
+        .then(registration => console.log('SW зарегистрирован: ', registration.scope))
+        .catch(err => console.log('SW ошибка регистрации: ', err));
     });
   }
 </script>
+
 </body>
 </html>
