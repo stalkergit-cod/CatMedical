@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>КотоМедик — Календарь Лечения Питомцев</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" href="/icon-192.png">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="КотоМедик">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain;
+        }
+        body.modal-open { overflow: hidden; }
+        
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        .fade-in { animation: fadeIn 0.25s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Анимация для In-App уведомлений (Toast) */
+        .toast-enter { animation: toastIn 0.4s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
+        .toast-exit { animation: toastOut 0.3s ease-in forwards; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(20px) scale(0.95); }
+        }
+
+        .calendar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            max-height: 150px; 
+            overflow: hidden;
+        }
+        .calendar-hidden {
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-bottom-width: 0 !important;
+        }
+        
+        .day-check:has(input:checked) {
+            background-color: #4f46e5; 
+            color: white;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Хедер -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="heart-pulse" class="w-6 h-6"></i></div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">КотоМедик</h1>
+                    <p class="text-xs text-slate-500">Забота о здоровье питомцев</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="openModal('widgetViewModal')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold" title="Виджет дня">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                </button>
+                <button onclick="openModal('settingsModal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors" title="Настройки">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Статистика -->
+    <section class="bg-slate-50 border-b border-slate-100 py-2.5 px-4 z-20 sticky top-[61px] bg-opacity-95 backdrop-blur-sm">
+        <div class="max-w-md mx-auto flex items-center justify-around text-xs text-slate-500">
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-slate-800 text-sm" id="stat-pets-count">0</span>
+                <span>Котиков</span>
+            </div>
+            <div class="h-5 w-[1px] bg-slate-200"></div>
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-slate-800 text-sm" id="stat-active-meds">0</span>
+                <span>Лекарств</span>
+            </div>
+            <div class="h-5 w-[1px] bg-slate-200"></div>
+            <div class="flex flex-col items-center">
+                <span class="font-bold text-slate-800 text-sm text-green-600" id="stat-completed-today">0</span>
+                <span>Сделано сегодня</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Календарная лента -->
+    <div id="calendar-wrapper" class="bg-white border-b border-slate-100 py-3 shadow-sm sticky top-[107px] z-10 calendar-transition">
+        <div class="max-w-md mx-auto px-4">
+            <div class="grid grid-cols-7 gap-1 text-center" id="calendar-strip"></div>
+        </div>
+    </div>
+
+    <!-- Основной контент (Здесь работает свайп) -->
+    <main class="flex-grow max-w-md w-full mx-auto px-4 py-4 pb-28" id="swipe-container">
+        
+        <div id="content-today" class="space-y-4 fade-in">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-md">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-lg font-semibold" id="progress-title">План лечения</h2>
+                        <p class="text-xs text-indigo-100 mt-1" id="treatment-progress-text">Загрузка задач...</p>
+                    </div>
+                    <span class="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full border border-white/10" id="progress-percent">0%</span>
+                </div>
+                <div class="w-full bg-white/20 h-2.5 rounded-full mt-4 overflow-hidden">
+                    <div id="progress-bar" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 text-base">Процедуры</h3>
+                    <button onclick="resetDayCompletions()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Сбросить
+                    </button>
+                </div>
+                <div id="today-tasks-container" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <div id="content-pets" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-lg">Мои питомцы</h3>
+                <button onclick="openAddPetModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Добавить
+                </button>
+            </div>
+            <div id="pets-list-container" class="space-y-3"></div>
+        </div>
+
+        <div id="content-meds" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-lg">Лекарства</h3>
+                <button onclick="openAddMedModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Назначить
+                </button>
+            </div>
+            <div id="meds-list-container" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <!-- Контейнер для In-App уведомлений (Toast) -->
+    <div id="toast-container" class="fixed bottom-20 left-4 right-4 z-[60] flex flex-col items-center gap-2 pointer-events-none md:max-w-md md:mx-auto"></div>
+
+    <!-- Нижняя навигация -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 py-2 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:max-w-md md:mx-auto">
+        <div class="grid grid-cols-3 gap-1 text-xs font-medium">
+            <button onclick="switchTab('today', 0)" id="tab-today" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-indigo-600 transition-all bg-indigo-50/70">
+                <i data-lucide="check-square" class="w-5 h-5"></i><span>Расписание</span>
+            </button>
+            <button onclick="switchTab('pets', 1)" id="tab-pets" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-900 transition-all">
+                <i data-lucide="cat" class="w-5 h-5"></i><span>Питомцы</span>
+            </button>
+            <button onclick="switchTab('meds', 2)" id="tab-meds" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-900 transition-all">
+                <i data-lucide="pill" class="w-5 h-5"></i><span>Лекарства</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- МОДАЛКИ (Сокращены для экономии места, логика идентична прошлой версии) -->
+    
+    <!-- МОДАЛКА: ПИТОМЕЦ -->
+    <div id="addPetModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl fade-in">
+            <div class="bg-indigo-50 px-5 py-4 border-b border-indigo-100 flex justify-between items-center sticky top-0 z-10">
+                <h3 id="petModalTitle" class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Новый питомец</h3>
+                <button onclick="closeModal('addPetModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="petForm" onsubmit="savePet(event)" class="p-5 space-y-4">
+                <input type="hidden" id="editPetId" value="">
+                <div class="flex flex-col items-center justify-center pb-2">
+                    <div class="relative w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
+                        <div id="avatar-preview" class="w-full h-full flex items-center justify-center text-5xl bg-cover bg-center">🐱</div>
+                        <button type="button" id="clear-photo-btn" onclick="clearSelectedPhoto()" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-lg shadow hover:bg-red-600 hidden transition-colors z-10"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                    <label class="mt-2.5 cursor-pointer bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors">
+                        <i data-lucide="camera" class="w-3.5 h-3.5"></i> Загрузить фото
+                        <input type="file" id="petPhotoInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(this)">
+                    </label>
+                </div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Кличка *</label><input type="text" id="petName" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Барсик"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Порода / Описание</label><input type="text" id="petBreed" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Серый британец"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Аватар</label><div class="grid grid-cols-5 gap-2" id="emoji-selector"></div></div>
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeModal('addPetModal')" class="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Отмена</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ЛЕКАРСТВО -->
+    <div id="addMedModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl fade-in">
+            <div class="bg-indigo-50 px-5 py-4 border-b border-indigo-100 flex justify-between items-center sticky top-0 z-10">
+                <h3 id="medModalTitle" class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="pill" class="text-indigo-600 w-5 h-5"></i> Новое назначение</h3>
+                <button onclick="closeModal('addMedModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="medForm" onsubmit="saveMedication(event)" class="p-5 space-y-4">
+                <input type="hidden" id="editMedId" value="">
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Кому? *</label><select id="medPetId" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white"></select></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Препарат *</label><input type="text" id="medName" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Синулокс"></div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Тип *</label>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <label class="flex items-center gap-2 border border-slate-200 p-2 rounded-lg cursor-pointer hover:bg-slate-50"><input type="radio" name="medType" value="injection" checked class="text-indigo-600"><span>💉 Укол</span></label>
+                        <label class="flex items-center gap-2 border border-slate-200 p-2 rounded-lg cursor-pointer hover:bg-slate-50"><input type="radio" name="medType" value="pill" class="text-indigo-600"><span>💊 Таблетка</span></label>
+                        <label class="flex items-center gap-2 border border-slate-200 p-2 rounded-lg cursor-pointer hover:bg-slate-50"><input type="radio" name="medType" value="liquid" class="text-indigo-600"><span>🧪 Капли</span></label>
+                        <label class="flex items-center gap-2 border border-slate-200 p-2 rounded-lg cursor-pointer hover:bg-slate-50"><input type="radio" name="medType" value="ointment" class="text-indigo-600"><span>🧴 Мазь</span></label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Дозировка *</label><input type="text" id="medDosage" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="0.4 мл"></div>
+                    <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Время *</label><input type="time" id="medTime" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase">Дни приема *</label>
+                        <div class="flex gap-2 text-[10px] font-bold">
+                            <button type="button" onclick="selectAllDays(true)" class="text-indigo-600 hover:underline">Каждый день</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="selectAllDays(false)" class="text-slate-500 hover:underline">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1">
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="1" class="sr-only"><span class="font-bold">Пн</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="2" class="sr-only"><span class="font-bold">Вт</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="3" class="sr-only"><span class="font-bold">Ср</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="4" class="sr-only"><span class="font-bold">Чт</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="5" class="sr-only"><span class="font-bold">Пт</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="6" class="sr-only"><span class="font-bold">Сб</span></label>
+                        <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="7" class="sr-only"><span class="font-bold">Вс</span></label>
+                    </div>
+                </div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Заметки</label><textarea id="medNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: давать после еды..."></textarea></div>
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeModal('addMedModal')" class="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Отмена</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: НАСТРОЙКИ -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl fade-in">
+            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="settings" class="text-slate-600 w-5 h-5"></i> Настройки</h3>
+                <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <!-- Кнопка запроса разрешений на уведомления -->
+                <button onclick="requestNotifPermission()" id="notif-perm-btn" class="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold text-sm hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="bell-ring" class="w-4 h-4"></i> Включить системные уведомления
+                </button>
+                
+                <button onclick="exportData()" class="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-semibold text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Экспорт данных (JSON)
+                </button>
+                <label class="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Импорт данных
+                    <input type="file" accept=".json" class="hidden" onchange="importData(event)">
+                </label>
+                <button onclick="clearAllData()" class="w-full py-3 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Удалить все данные
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ВИДЖЕТ -->
+    <div id="widgetViewModal" class="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 hidden text-white">
+        <button onclick="closeModal('widgetViewModal')" class="absolute top-6 right-6 text-white/70 hover:text-white"><i data-lucide="x" class="w-8 h-8"></i></button>
+        <div class="text-center space-y-6 w-full max-w-xs">
+            <div class="text-6xl">🐾</div>
+            <div>
+                <h2 class="text-2xl font-bold" id="widget-title">Сегодня</h2>
+                <p class="text-white/60 mt-1" id="widget-subtitle">0 из 0 выполнено</p>
+            </div>
+            <div class="w-full bg-white/20 h-3 rounded-full overflow-hidden">
+                <div id="widget-progress-bar" class="bg-green-400 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+            </div>
+            <div id="widget-tasks-list" class="text-left space-y-3 mt-6 max-h-[40vh] overflow-y-auto pr-2"></div>
+        </div>
+    </div>
+
+<script>
+// ==================== КОНСТАНТЫ И СОСТОЯНИЕ ====================
+const STORAGE_KEY = 'kotomedic_data';
+const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🦎', '🐵'];
+const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
+const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const TABS = ['today', 'pets', 'meds'];
+
+let state = { pets: [], meds: [], completions: {} };
+let selectedDate = new Date();
+let currentPetAvatar = '🐱';
+let currentPetPhoto = null;
+let activeTabIdx = 0; // Для свайпов
+
+// Множество для предотвращения повторных уведомлений
+let firedAlerts = new Set();
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    initEmojiSelector();
+    renderCalendar();
+    renderAll();
+    setupSmartScroll();
+    setupSwipeGestures();
+    startNotificationChecker();
+    updateNotifButtonUI();
+    lucide.createIcons();
+});
+
+function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
+function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ alert("Закончилось место! Удалите фото питомцев."); } }
+
+// ==================== СВАЙПЫ И ЖЕСТЫ ====================
+function setupSwipeGestures() {
+    const container = document.getElementById('swipe-container');
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    container.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    container.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe(touchStartX, touchEndX);
+    }, { passive: true });
+}
+
+function handleSwipe(startX, endX) {
+    const diff = startX - endX;
+    // Порог 80px, чтобы не конфликтовать со скроллом
+    if (Math.abs(diff) < 80) return;
+
+    if (diff > 0 && activeTabIdx < TABS.length - 1) {
+        // Свайп влево (вперед)
+        switchTab(TABS[activeTabIdx + 1], activeTabIdx + 1);
+    } else if (diff < 0 && activeTabIdx > 0) {
+        // Свайп вправо (назад)
+        switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
+    }
+}
+
+// ==================== УВЕДОМЛЕНИЯ ====================
+function requestNotifPermission() {
+    if (!('Notification' in window)) {
+        alert('Ваш браузер не поддерживает системные уведомления. Внутри приложения они будут работать.');
+        return;
+    }
+    Notification.requestPermission().then(permission => {
+        updateNotifButtonUI();
+        if (permission === 'granted') {
+            showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring');
+        }
+    });
+}
+
+function updateNotifButtonUI() {
+    const btn = document.getElementById('notif-perm-btn');
+    if ('Notification' in window && Notification.permission === 'granted') {
+        btn.innerHTML = '<i data-lucide="bell-check" class="w-4 h-4"></i> Уведомления включены ✓';
+        btn.classList.remove('bg-amber-50', 'text-amber-700', 'hover:bg-amber-100');
+        btn.classList.add('bg-green-50', 'text-green-700', 'hover:bg-green-100');
+        btn.disabled = true;
+        lucide.createIcons();
+    }
+}
+
+function startNotificationChecker() {
+    // Проверяем каждую минуту
+    setInterval(() => {
+        const now = new Date();
+        const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const dateStr = getDateStr(now);
+        const tasks = getTasksForDate(now);
+
+        tasks.forEach(task => {
+            const alertId = `${dateStr}_${task.id}`;
+            
+            // Если время совпало, задача не выполнена и уведомление еще не бросали
+            if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
+                firedAlerts.add(alertId); // Блокируем повторный показ
+                
+                const msg = `${task.petName}: ${task.name} (${task.dosage})`;
+                
+                // 1. In-App Toast (всегда работает)
+                showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
+                playCompletionSound(); // Звуковой сигнал
+                
+                // 2. Системное Push-уведомление браузера (если есть права)
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('КотоМедик: Пора дать лекарство!', {
+                        body: msg,
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐈‍⬛</text></svg>'
+                    });
+                }
+            }
+        });
+    }, 60000); // 60000 мс = 1 минута
+}
+
+// Красивое всплывающее уведомление внутри приложения
+function showToast(title, body, icon = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast-enter bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3 w-full max-w-sm pointer-events-auto cursor-pointer';
+    toast.onclick = () => removeToast(toast);
+    
+    toast.innerHTML = `
+        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl flex-shrink-0">
+            <i data-lucide="${icon}" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-grow">
+            <h4 class="font-bold text-sm text-slate-900">${title}</h4>
+            <p class="text-xs text-slate-500 mt-0.5">${body}</p>
+        </div>
+    `;
+    
+    container.appendChild(toast);
+    lucide.createIcons();
+    
+    // Авто-скрытие через 5 секунд
+    setTimeout(() => removeToast(toast), 5000);
+}
+
+function removeToast(toastElement) {
+    if (!toastElement.parentNode) return;
+    toastElement.classList.remove('toast-enter');
+    toastElement.classList.add('toast-exit');
+    setTimeout(() => toastElement.remove(), 300);
+}
+
+// ==================== ЗВУК ====================
+function playCompletionSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+}
+
+// ==================== НАВИГАЦИЯ ====================
+function switchTab(tabName, idx = null) {
+    if (idx !== null) activeTabIdx = idx;
+    else activeTabIdx = TABS.indexOf(tabName);
+
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.remove('text-indigo-600', 'bg-indigo-50/70');
+        btn.classList.add('text-slate-500');
+        if (i === activeTabIdx) {
+            btn.classList.add('text-indigo-600', 'bg-indigo-50/70');
+            btn.classList.remove('text-slate-500');
+        }
+    });
+
+    document.querySelectorAll('main > div').forEach(div => { div.classList.add('hidden'); div.classList.remove('fade-in'); });
+    const target = document.getElementById(`content-${tabName}`);
+    target.classList.remove('hidden');
+    void target.offsetWidth; 
+    target.classList.add('fade-in');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    lucide.createIcons();
+}
+
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-open'); lucide.createIcons(); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-open'); }
+function setupSmartScroll() { let lY = window.scrollY; const c = document.getElementById('calendar-wrapper'); window.addEventListener('scroll', () => { const cY = window.scrollY; if(cY > lY && cY > 150) c.classList.add('calendar-hidden'); else c.classList.remove('calendar-hidden'); lY = cY; }, {passive:true}); }
+
+// ==================== КАЛЕНДАРЬ ====================
+function renderCalendar() {
+    const s = document.getElementById('calendar-strip'); s.innerHTML = ''; const t = new Date();
+    for(let i=-3; i<=3; i++) { const d=new Date(selectedDate); d.setDate(d.getDate()+i); const isT=d.toDateString()===t.toDateString(); const isS=d.toDateString()===selectedDate.toDateString();
+    const b=document.createElement('button'); b.onclick=()=>{selectedDate=d; renderCalendar(); renderSchedule();};
+    b.className=`flex flex-col items-center p-1.5 rounded-xl transition-all ${isS?'bg-indigo-600 text-white shadow-md scale-105':'hover:bg-slate-100 text-slate-600'}`;
+    b.innerHTML=`<span class="text-[10px] font-medium ${isS?'text-indigo-200':'text-slate-400'}">${DAYS_MAP[getJsDayToEuDay(d.getDay())]}</span><span class="text-lg font-bold ${isT&&!isS?'text-indigo-600':''}">${d.getDate()}</span>${isT&&!isS?'<div class="w-1 h-1 bg-indigo-600 rounded-full mt-0.5"></div>':''}`;
+    s.appendChild(b); }
+}
+function getJsDayToEuDay(d) { return d===0?7:d; }
+function getDateStr(d) { return d.toISOString().split('T')[0]; }
+
+// ==================== ПИТОМЦЫ ====================
+function initEmojiSelector() { const c=document.getElementById('emoji-selector'); EMOJIS.forEach(e=>{ const b=document.createElement('button'); b.type='button'; b.className='text-2xl p-2 rounded-lg hover:bg-slate-100 transition-colors border-2 border-transparent focus:outline-none'; b.textContent=e; b.onclick=()=>{currentPetAvatar=e; currentPetPhoto=null; updateAvatarPreview(); document.getElementById('clear-photo-btn').classList.add('hidden');}; c.appendChild(b); }); }
+function updateAvatarPreview() { const p=document.getElementById('avatar-preview'); if(currentPetPhoto){p.style.backgroundImage=`url(${currentPetPhoto})`;p.textContent='';document.getElementById('clear-photo-btn').classList.remove('hidden');}else{p.style.backgroundImage='none';p.textContent=currentPetAvatar;document.getElementById('clear-photo-btn').classList.add('hidden');} }
+function handlePhotoUpload(input) { const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){ const img=new Image(); img.onload=function(){ const c=document.createElement('canvas'); let w=img.width,h=img.height; if(w>h){if(w>200){h*=200/w;w=200;}}else{if(h>200){w*=200/h;h=200;}} c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); currentPetPhoto=c.toDataURL('image/jpeg',0.7); currentPetAvatar=''; updateAvatarPreview(); }; img.src=e.target.result; }; r.readAsDataURL(f); }
+function clearSelectedPhoto() { currentPetPhoto=null; currentPetAvatar='🐱'; updateAvatarPreview(); document.getElementById('petPhotoInput').value=''; }
+
+function openAddPetModal(petId=null) {
+    document.getElementById('petForm').reset(); document.getElementById('editPetId').value=''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Новый питомец'; currentPetPhoto=null; currentPetAvatar='🐱'; updateAvatarPreview();
+    if(petId){ const p=state.pets.find(x=>x.id===petId); if(p){ document.getElementById('editPetId').value=p.id; document.getElementById('petName').value=p.name; document.getElementById('petBreed').value=p.breed||''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Редактирование'; if(p.photo){currentPetPhoto=p.photo;currentPetAvatar='';}else{currentPetAvatar=p.avatar;currentPetPhoto=null;} updateAvatarPreview(); } }
+    openModal('addPetModal');
+}
+function savePet(e) { e.preventDefault(); const id=document.getElementById('editPetId').value||'pet_'+Date.now(); const d={id, name:document.getElementById('petName').value.trim(), breed:document.getElementById('petBreed').value.trim(), avatar:currentPetAvatar, photo:currentPetPhoto}; const i=state.pets.findIndex(p=>p.id===id); if(i>-1)state.pets[i]=d; else state.pets.push(d); saveData(); renderAll(); closeModal('addPetModal'); }
+function deletePet(id) { if(!confirm('Удалить питомца и все его назначения?'))return; state.pets=state.pets.filter(p=>p.id!==id); state.meds=state.meds.filter(m=>m.petId!==id); saveData(); renderAll(); }
+
+function renderPets() {
+    const c=document.getElementById('pets-list-container');
+    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">😿</p><p>Добавьте первого котика!</p></div>';return;}
+    c.innerHTML=state.pets.map(p=>{ const mc=state.meds.filter(m=>m.petId===p.id).length; const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">${a}<div class="flex-grow"><h4 class="font-bold text-slate-900">${p.name}</h4><p class="text-xs text-slate-500">${p.breed||'Без описания'} • ${mc} назнач.</p></div><div class="flex gap-2"><button onclick="openAddPetModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deletePet('${p.id}')" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`; }).join('');
+    lucide.createIcons();
+}
+
+// ==================== ЛЕКАРСТВА ====================
+function openAddMedModal(medId=null) {
+    document.getElementById('medForm').reset(); document.getElementById('editMedId').value=''; document.getElementById('medModalTitle').innerHTML='<i data-lucide="pill" class="text-indigo-600 w-5 h-5"></i> Новое назначение';
+    const s=document.getElementById('medPetId'); s.innerHTML=!state.pets.length?'<option value="" disabled selected>Сначала добавьте питомца</option>':state.pets.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    if(medId){ const m=state.meds.find(x=>x.id===medId); if(m){ document.getElementById('editMedId').value=m.id; s.value=m.petId; document.getElementById('medName').value=m.name; document.getElementById('medDosage').value=m.dosage; document.getElementById('medTime').value=m.time; document.getElementById('medNotes').value=m.notes||''; document.querySelector(`input[name="medType"][value="${m.type}"]`).checked=true; document.querySelectorAll('input[name="medDays"]').forEach(cb=>{cb.checked=m.days.includes(parseInt(cb.value));}); document.getElementById('medModalTitle').innerHTML='<i data-lucide="pill" class="text-indigo-600 w-5 h-5"></i> Редактирование'; } }
+    openModal('addMedModal');
+}
+function selectAllDays(st) { document.querySelectorAll('input[name="medDays"]').forEach(cb=>cb.checked=st); }
+function saveMedication(e) { e.preventDefault(); const sd=Array.from(document.querySelectorAll('input[name="medDays"]:checked')).map(cb=>parseInt(cb.value)); if(!sd.length){alert("Выберите день!");return;} if(!state.pets.length){alert("Добавьте питомца!");return;} const id=document.getElementById('editMedId').value||'med_'+Date.now(); const d={id, petId:document.getElementById('medPetId').value, name:document.getElementById('medName').value.trim(), type:document.querySelector('input[name="medType"]:checked').value, dosage:document.getElementById('medDosage').value.trim(), time:document.getElementById('medTime').value, notes:document.getElementById('medNotes').value.trim(), days:sd}; const i=state.meds.findIndex(m=>m.id===id); if(i>-1)state.meds[i]=d; else state.meds.push(d); saveData(); renderAll(); closeModal('addMedModal'); }
+function deleteMed(id) { if(!confirm('Отменить назначение?'))return; state.meds=state.meds.filter(m=>m.id!==id); saveData(); renderAll(); }
+
+function renderMeds() {
+    const c=document.getElementById('meds-list-container');
+    if(!state.meds.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">💊</p><p>Нет назначений.</p></div>';return;}
+    c.innerHTML=state.meds.map(m=>{ const p=state.pets.find(x=>x.id===m.petId); const pn=p?p.name:'<span class="text-red-400 line-through">Удален</span>'; const ds=m.days.map(d=>DAYS_MAP[d]).join(', '); const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[m.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><div class="flex justify-between items-start"><div><h4 class="font-bold text-slate-900">${ti} ${m.name}</h4><p class="text-xs text-slate-500 mt-1">Для: ${pn}</p></div><div class="flex gap-2"><button onclick="openAddMedModal('${m.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteMed('${m.id}')" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div><div class="mt-3 flex flex-wrap gap-2 text-[11px]"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium">${m.dosage}</span><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium">🕐 ${m.time}</span><span class="bg-slate-50 text-slate-500 px-2 py-1 rounded-md border border-dashed border-slate-200">${ds}</span></div>${m.notes?`<div class="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg flex gap-2"><span>💡</span><span>${m.notes}</span></div>`:''}</div>`; }).join('');
+    lucide.createIcons();
+}
+
+// ==================== РАСПИСАНИЕ И ПРОГРЕСС ====================
+function getTasksForDate(date) {
+    const ds=getDateStr(date); const ed=getJsDayToEuDay(date.getDay());
+    return state.meds.filter(m=>m.days.includes(ed)).map(m=>{ const p=state.pets.find(x=>x.id===m.petId); return {...m, petName:p?p.name:'Удален', petAvatar:p?.avatar||'❓', isCompleted:state.completions[ds]?.[m.id]===true}; }).sort((a,b)=>a.time.localeCompare(b.time));
+}
+
+function renderSchedule() {
+    const ds=getDateStr(selectedDate); const tasks=getTasksForDate(selectedDate); const c=document.getElementById('today-tasks-container');
+    const isT=getDateStr(new Date())===ds; document.getElementById('progress-title').textContent=isT?'План на сегодня':`План на ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]}`;
+    const cc=tasks.filter(t=>t.isCompleted).length; const tc=tasks.length; const p=tc===0?0:Math.round((cc/tc)*100);
+    document.getElementById('treatment-progress-text').textContent=tc===0?'Нет процедур':`Выполнено ${cc} из ${tc}`;
+    document.getElementById('progress-percent').textContent=`${p}%`; document.getElementById('progress-bar').style.width=`${p}%`;
+    if(!tc){c.innerHTML='<div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><p class="text-3xl mb-2">😎</p><p>Свободный день!</p></div>';updateWidget(tasks,p);return;}
+    c.innerHTML=tasks.map(t=>{ const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[t.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all ${t.isCompleted?'opacity-60 bg-slate-50':''}"><button onclick="toggleTask('${ds}','${t.id}')" class="w-8 h-8 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${t.isCompleted?'bg-green-500 border-green-500 text-white':'border-slate-300 hover:border-indigo-400'}">${t.isCompleted?'<i data-lucide="check" class="w-4 h-4"></i>':''}</button><div class="flex-grow ${t.isCompleted?'line-through text-slate-500':''}"><div class="font-semibold text-sm text-slate-900">${ti} ${t.name} <span class="text-xs font-normal text-slate-500">(${t.dosage})</span></div><div class="text-xs text-slate-500 mt-0.5">${t.petAvatar} ${t.petName} • 🕐 ${t.time}</div>${t.notes?`<div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-2 flex gap-1.5"><span>💡</span><span>${t.notes}</span></div>`:''}</div></div>`; }).join('');
+    lucide.createIcons(); updateWidget(tasks,p);
+}
+
+function toggleTask(ds, mId) {
+    if(!state.completions[ds]) state.completions[ds]={}; const willBeDone=!state.completions[ds][mId]; state.completions[ds][mId]=willBeDone;
+    if(willBeDone) playCompletionSound();
+    if(!willBeDone){delete state.completions[ds][mId]; if(!Object.keys(state.completions[ds]).length)delete state.completions[ds];}
+    saveData(); renderSchedule(); updateStats();
+}
+function resetDayCompletions() { const ds=getDateStr(selectedDate); if(state.completions[ds]&&confirm('Сбросить день?')){delete state.completions[ds]; saveData(); renderSchedule(); updateStats();} }
+function updateStats() { document.getElementById('stat-pets-count').textContent=state.pets.length; document.getElementById('stat-active-meds').textContent=state.meds.length; document.getElementById('stat-completed-today').textContent=getTasksForDate(new Date()).filter(t=>t.isCompleted).length; }
+function updateWidget(tasks, p) { document.getElementById('widget-title').textContent='Сегодня'; document.getElementById('widget-subtitle').textContent=`${tasks.filter(t=>t.isCompleted).length} из ${tasks.length} выполнено`; document.getElementById('widget-progress-bar').style.width=`${p}%`; const l=document.getElementById('widget-tasks-list'); if(!tasks.length){l.innerHTML='<p class="text-white/50 text-center">Нет задач</p>';return;} l.innerHTML=tasks.map(t=>`<div class="flex items-center gap-3 p-3 rounded-xl ${t.isCompleted?'bg-white/10':'bg-white/5 border border-white/10'}"><div class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${t.isCompleted?'bg-green-400 border-green-400':'border-white/30'}">${t.isCompleted?'✓':''}</div><div><span class="${t.isCompleted?'line-through text-white/50':''}">${t.name} <span class="text-white/40">${t.time}</span></span>${t.notes?`<div class="text-[10px] text-amber-300 mt-0.5">💡 ${t.notes}</div>`:''}</div></div>`).join(''); }
+
+// ==================== НАСТРОЙКИ ====================
+function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`kotomedic_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
+function importData(ev) { const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){try{const s=JSON.parse(e.target.result);if(s.pets&&s.meds){state=s;saveData();renderAll();closeModal('settingsModal');alert("Импортировано!");}else alert("Ошибка формата");}catch(e){alert("Ошибка чтения");}}; r.readAsText(f); ev.target.value=''; }
+function clearAllData() { if(confirm("Удалить ВСЕ данные?")){localStorage.removeItem(STORAGE_KEY);state={pets:[],meds:[],completions:{}};renderAll();closeModal('settingsModal');} }
+
+// ==================== ОБЩИЙ РЕНДЕР ====================
+function renderAll() { renderPets(); renderMeds(); renderSchedule(); updateStats(); lucide.createIcons(); }
+</script>
+<script>
+  // Регистрация Service Worker для PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        })
+        .catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+  }
+</script>
+</body>
+</html>
