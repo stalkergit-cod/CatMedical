@@ -11,9 +11,9 @@
     
     <!-- PWA Манифест и Тема -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" id="meta-theme-color" content="#4f46e5">
     
-     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="КотоМедик">
@@ -72,6 +72,58 @@
             color: white;
             border-color: #4f46e5;
         }
+
+        /* ================= ТЕМЫ ОФОРМЛЕНИЯ ================= */
+        /* Изумруд (Зеленый) */
+        .theme-green .bg-indigo-50 { background-color: #ecfdf5 !important; }
+        .theme-green .bg-indigo-50\/70 { background-color: rgba(236, 253, 245, 0.7) !important; }
+        .theme-green .bg-indigo-100 { background-color: #d1fae5 !important; }
+        .theme-green .hover\:bg-indigo-100:hover { background-color: #d1fae5 !important; }
+        .theme-green .text-indigo-100 { color: #d1fae5 !important; }
+        .theme-green .text-indigo-200 { color: #a7f3d0 !important; }
+        .theme-green .text-indigo-600 { color: #059669 !important; }
+        .theme-green .text-indigo-700 { color: #047857 !important; }
+        .theme-green .bg-indigo-600 { background-color: #059669 !important; }
+        .theme-green .border-indigo-400 { border-color: #34d399 !important; }
+        .theme-green .border-indigo-500 { border-color: #10b989 !important; }
+        .theme-green .hover\:bg-indigo-700:hover { background-color: #047857 !important; }
+        .theme-green .ring-indigo-500 { --tw-ring-color: #10b989 !important; }
+        .theme-green .bg-gradient-to-r.from-indigo-500.to-purple-600 { background-image: linear-gradient(to right, #10b989, #047857) !important; }
+        .theme-green .day-check:has(input:checked) { background-color: #059669 !important; border-color: #059669 !important; color: white !important; }
+
+        /* Закат (Розовый) */
+        .theme-pink .bg-indigo-50 { background-color: #fdf2f8 !important; }
+        .theme-pink .bg-indigo-50\/70 { background-color: rgba(253, 242, 248, 0.7) !important; }
+        .theme-pink .bg-indigo-100 { background-color: #fce7f3 !important; }
+        .theme-pink .hover\:bg-indigo-100:hover { background-color: #fce7f3 !important; }
+        .theme-pink .text-indigo-100 { color: #fce7f3 !important; }
+        .theme-pink .text-indigo-200 { color: #fbcfe8 !important; }
+        .theme-pink .text-indigo-600 { color: #db2777 !important; }
+        .theme-pink .text-indigo-700 { color: #be185d !important; }
+        .theme-pink .bg-indigo-600 { background-color: #db2777 !important; }
+        .theme-pink .border-indigo-400 { border-color: #f472b6 !important; }
+        .theme-pink .border-indigo-500 { border-color: #ec4899 !important; }
+        .theme-pink .hover\:bg-indigo-700:hover { background-color: #be185d !important; }
+        .theme-pink .ring-indigo-500 { --tw-ring-color: #ec4899 !important; }
+        .theme-pink .bg-gradient-to-r.from-indigo-500.to-purple-600 { background-image: linear-gradient(to right, #ec4899, #8b5cf6) !important; }
+        .theme-pink .day-check:has(input:checked) { background-color: #db2777 !important; border-color: #db2777 !important; color: white !important; }
+
+        /* Янтарь (Оранжевый) */
+        .theme-amber .bg-indigo-50 { background-color: #fffbeb !important; }
+        .theme-amber .bg-indigo-50\/70 { background-color: rgba(255, 251, 235, 0.7) !important; }
+        .theme-amber .bg-indigo-100 { background-color: #fef3c7 !important; }
+        .theme-amber .hover\:bg-indigo-100:hover { background-color: #fef3c7 !important; }
+        .theme-amber .text-indigo-100 { color: #fef3c7 !important; }
+        .theme-amber .text-indigo-200 { color: #fde68a !important; }
+        .theme-amber .text-indigo-600 { color: #d97706 !important; }
+        .theme-amber .text-indigo-700 { color: #b45309 !important; }
+        .theme-amber .bg-indigo-600 { background-color: #d97706 !important; }
+        .theme-amber .border-indigo-400 { border-color: #fbbf24 !important; }
+        .theme-amber .border-indigo-500 { border-color: #f59e0b !important; }
+        .theme-amber .hover\:bg-indigo-700:hover { background-color: #b45309 !important; }
+        .theme-amber .ring-indigo-500 { --tw-ring-color: #f59e0b !important; }
+        .theme-amber .bg-gradient-to-r.from-indigo-500.to-purple-600 { background-image: linear-gradient(to right, #f59e0b, #d97706) !important; }
+        .theme-amber .day-check:has(input:checked) { background-color: #d97706 !important; border-color: #d97706 !important; color: white !important; }
     </style>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen">
@@ -87,9 +139,6 @@
                 </div>
             </div>
             <div class="flex items-center gap-1.5">
-                <button onclick="openModal('widgetViewModal')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold" title="Виджет дня">
-                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                </button>
                 <button onclick="openModal('settingsModal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors" title="Настройки">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
@@ -143,9 +192,6 @@
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <h3 class="font-bold text-slate-900 text-base">Процедуры</h3>
-                    <button onclick="resetDayCompletions()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
-                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Сбросить
-                    </button>
                 </div>
                 <div id="today-tasks-container" class="space-y-3"></div>
             </div>
@@ -209,8 +255,8 @@
                         <span>Получайте напоминания о приеме лекарств</span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="cat" class="w-4 h-4"></i></div>
-                        <span>Добавляйте всех своих пушистых пациентов</span>
+                        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="notebook-pen" class="w-4 h-4"></i></div>
+                        <span>Ведите дневник здоровья и питания</span>
                     </div>
                 </div>
                 <button onclick="closeWelcomeModal()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm transition-colors">
@@ -222,6 +268,23 @@
 
     <!-- МОДАЛКИ -->
     
+    <!-- МОДАЛКА: ДНЕВНИК ПИТОМЦА -->
+    <div id="petDiaryModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col shadow-2xl fade-in">
+            <div class="bg-indigo-50 px-5 py-4 border-b border-indigo-100 flex justify-between items-center sticky top-0 z-10 rounded-t-2xl">
+                <h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="notebook-pen" class="text-indigo-600 w-5 h-5"></i> Дневник: <span id="diaryPetName" class="text-indigo-600">Питомец</span></h3>
+                <button onclick="closeModal('petDiaryModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-4 border-b border-slate-100">
+                <textarea id="diaryInput" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: 12.10 - поел хорошо, температура в норме, начал играть..."></textarea>
+                <button onclick="addDiaryEntry()" class="mt-2 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Добавить запись
+                </button>
+            </div>
+            <div id="diaryList" class="flex-grow overflow-y-auto p-4 space-y-3"></div>
+        </div>
+    </div>
+
     <!-- МОДАЛКА: ПИТОМЕЦ -->
     <div id="addPetModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl fade-in">
@@ -306,12 +369,33 @@
 
     <!-- МОДАЛКА: НАСТРОЙКИ -->
     <div id="settingsModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl fade-in">
-            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl fade-in">
+            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
                 <h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="settings" class="text-slate-600 w-5 h-5"></i> Настройки</h3>
                 <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-5 space-y-4">
+                <!-- Выбор темы -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Цветовая тема</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setTheme('default')" data-theme="default" class="theme-option p-1 rounded-lg border-2 transition-all">
+                            <div class="w-full h-8 rounded" style="background-color: #4f46e5;"></div>
+                        </button>
+                        <button onclick="setTheme('green')" data-theme="green" class="theme-option p-1 rounded-lg border-2 transition-all">
+                            <div class="w-full h-8 rounded" style="background-color: #059669;"></div>
+                        </button>
+                        <button onclick="setTheme('pink')" data-theme="pink" class="theme-option p-1 rounded-lg border-2 transition-all">
+                            <div class="w-full h-8 rounded" style="background-color: #db2777;"></div>
+                        </button>
+                        <button onclick="setTheme('amber')" data-theme="amber" class="theme-option p-1 rounded-lg border-2 transition-all">
+                            <div class="w-full h-8 rounded" style="background-color: #d97706;"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
                 <button onclick="requestNotifPermission()" id="notif-perm-btn" class="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold text-sm hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
                     <i data-lucide="bell-ring" class="w-4 h-4"></i> Включить системные уведомления
                 </button>
@@ -329,30 +413,23 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА: ВИДЖЕТ -->
-    <div id="widgetViewModal" class="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 hidden text-white">
-        <button onclick="closeModal('widgetViewModal')" class="absolute top-6 right-6 text-white/70 hover:text-white"><i data-lucide="x" class="w-8 h-8"></i></button>
-        <div class="text-center space-y-6 w-full max-w-xs">
-            <div class="text-6xl">🐾</div>
-            <div>
-                <h2 class="text-2xl font-bold" id="widget-title">Сегодня</h2>
-                <p class="text-white/60 mt-1" id="widget-subtitle">0 из 0 выполнено</p>
-            </div>
-            <div class="w-full bg-white/20 h-3 rounded-full overflow-hidden">
-                <div id="widget-progress-bar" class="bg-green-400 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
-            </div>
-            <div id="widget-tasks-list" class="text-left space-y-3 mt-6 max-h-[40vh] overflow-y-auto pr-2"></div>
-        </div>
-    </div>
-
 <script>
 // ==================== КОНСТАНТЫ И СОСТОЯНИЕ ====================
 const STORAGE_KEY = 'kotomedic_data';
 const WELCOME_KEY = 'kotomedic_welcomed';
+const THEME_KEY = 'kotomedic_theme';
 const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🦎', '🐵'];
 const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const TABS = ['today', 'pets', 'meds'];
+
+// Цвета для мета-тега статус-бара браузера
+const themeColors = {
+    default: '#4f46e5',
+    green: '#059669',
+    pink: '#db2777',
+    amber: '#d97706'
+};
 
 let state = { pets: [], meds: [], completions: {} };
 let selectedDate = new Date();
@@ -360,9 +437,11 @@ let currentPetAvatar = '🐱';
 let currentPetPhoto = null;
 let activeTabIdx = 0;
 let firedAlerts = new Set();
+let currentDiaryPetId = null; 
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 document.addEventListener('DOMContentLoaded', () => {
+    loadTheme();
     loadData();
     initEmojiSelector();
     renderCalendar();
@@ -371,12 +450,45 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSwipeGestures();
     startNotificationChecker();
     updateNotifButtonUI();
-    checkFirstVisit(); // Проверка первого запуска
+    checkFirstVisit();
     lucide.createIcons();
 });
 
 function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
 function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ alert("Закончилось место! Удалите фото питомцев."); } }
+
+// ==================== ТЕМЫ ОФОРМЛЕНИЯ ====================
+function loadTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'default';
+    applyTheme(savedTheme);
+}
+
+function setTheme(themeName) {
+    localStorage.setItem(THEME_KEY, themeName);
+    applyTheme(themeName);
+    showToast('Тема изменена', 'Приложение обновлено', 'palette');
+}
+
+function applyTheme(themeName) {
+    // Удаляем старые классы тем
+    document.body.classList.remove('theme-default', 'theme-green', 'theme-pink', 'theme-amber');
+    // Добавляем новую
+    document.body.classList.add('theme-' + themeName);
+    
+    // Меняем цвет статус-бара
+    document.getElementById('meta-theme-color').setAttribute('content', themeColors[themeName]);
+    
+    // Подсвечиваем выбранную кнопку
+    document.querySelectorAll('.theme-option').forEach(el => {
+        if (el.dataset.theme === themeName) {
+            el.classList.add('border-slate-800', 'scale-105');
+            el.classList.remove('border-transparent');
+        } else {
+            el.classList.remove('border-slate-800', 'scale-105');
+            el.classList.add('border-transparent');
+        }
+    });
+}
 
 // ==================== ПРИВЕТСТВЕННОЕ ОКНО ====================
 function checkFirstVisit() {
@@ -559,13 +671,105 @@ function openAddPetModal(petId=null) {
     if(petId){ const p=state.pets.find(x=>x.id===petId); if(p){ document.getElementById('editPetId').value=p.id; document.getElementById('petName').value=p.name; document.getElementById('petBreed').value=p.breed||''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Редактирование'; if(p.photo){currentPetPhoto=p.photo;currentPetAvatar='';}else{currentPetAvatar=p.avatar;currentPetPhoto=null;} updateAvatarPreview(); } }
     openModal('addPetModal');
 }
-function savePet(e) { e.preventDefault(); const id=document.getElementById('editPetId').value||'pet_'+Date.now(); const d={id, name:document.getElementById('petName').value.trim(), breed:document.getElementById('petBreed').value.trim(), avatar:currentPetAvatar, photo:currentPetPhoto}; const i=state.pets.findIndex(p=>p.id===id); if(i>-1)state.pets[i]=d; else state.pets.push(d); saveData(); renderAll(); closeModal('addPetModal'); }
+
+function savePet(e) { 
+    e.preventDefault(); 
+    const id=document.getElementById('editPetId').value||'pet_'+Date.now(); 
+    const existing = state.pets.find(p => p.id === id);
+    const d={
+        id, 
+        name:document.getElementById('petName').value.trim(), 
+        breed:document.getElementById('petBreed').value.trim(), 
+        avatar:currentPetAvatar, 
+        photo:currentPetPhoto,
+        diary: existing && existing.diary ? existing.diary : [] 
+    }; 
+    const i=state.pets.findIndex(p=>p.id===id); 
+    if(i>-1) state.pets[i]=d; 
+    else state.pets.push(d); 
+    saveData(); 
+    renderAll(); 
+    closeModal('addPetModal'); 
+}
+
 function deletePet(id) { if(!confirm('Удалить питомца и все его назначения?'))return; state.pets=state.pets.filter(p=>p.id!==id); state.meds=state.meds.filter(m=>m.petId!==id); saveData(); renderAll(); }
 
 function renderPets() {
     const c=document.getElementById('pets-list-container');
-    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">😿</p><p>Добавьте первого котика!</p></div>';return;}
-    c.innerHTML=state.pets.map(p=>{ const mc=state.meds.filter(m=>m.petId===p.id).length; const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">${a}<div class="flex-grow"><h4 class="font-bold text-slate-900">${p.name}</h4><p class="text-xs text-slate-500">${p.breed||'Без описания'} • ${mc} назнач.</p></div><div class="flex gap-2"><button onclick="openAddPetModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deletePet('${p.id}')" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`; }).join('');
+    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">😿</p><p>Добавьте первого питомца!</p></div>';return;}
+    c.innerHTML=state.pets.map(p=>{
+        const mc=state.meds.filter(m=>m.petId===p.id).length; 
+        const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; 
+        return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+            ${a}
+            <div class="flex-grow">
+                <h4 class="font-bold text-slate-900">${p.name}</h4>
+                <p class="text-xs text-slate-500">${p.breed||'Без описания'} • ${mc} назнач.</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openPetDiary('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Дневник"><i data-lucide="notebook-pen" class="w-5 h-5"></i></button>
+                <button onclick="openAddPetModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Редактировать"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                <button onclick="deletePet('${p.id}')" class="text-slate-400 hover:text-red-500 p-1" title="Удалить"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+        </div>`; 
+    }).join('');
+    lucide.createIcons();
+}
+
+// ==================== ДНЕВНИК ПИТОМЦА ====================
+function openPetDiary(petId) {
+    currentDiaryPetId = petId;
+    const p = state.pets.find(x => x.id === petId);
+    if (!p) return;
+    document.getElementById('diaryPetName').textContent = p.name;
+    document.getElementById('diaryInput').value = '';
+    renderDiaryEntries(petId);
+    openModal('petDiaryModal');
+}
+
+function addDiaryEntry() {
+    const text = document.getElementById('diaryInput').value.trim();
+    if (!text) return;
+    const p = state.pets.find(x => x.id === currentDiaryPetId);
+    if (!p) return;
+    if (!p.diary) p.diary = [];
+    
+    const now = new Date();
+    const dateStr = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    
+    p.diary.unshift({ id: 'note_'+Date.now(), date: dateStr, text: text });
+    saveData();
+    
+    document.getElementById('diaryInput').value = '';
+    renderDiaryEntries(currentDiaryPetId);
+    showToast('Запись добавлена', 'Дневник обновлен', 'notebook-pen');
+}
+
+function deleteDiaryEntry(petId, noteId) {
+    const p = state.pets.find(x => x.id === petId);
+    if (p && p.diary) {
+        p.diary = p.diary.filter(n => n.id !== noteId);
+        saveData();
+        renderDiaryEntries(petId);
+    }
+}
+
+function renderDiaryEntries(petId) {
+    const p = state.pets.find(x => x.id === petId);
+    const c = document.getElementById('diaryList');
+    if (!p || !p.diary || !p.diary.length) {
+        c.innerHTML = '<p class="text-center text-slate-400 text-sm py-6">Пока нет записей.<br>Начните вести дневник здоровья!</p>';
+        return;
+    }
+    c.innerHTML = p.diary.map(n => `
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 relative">
+            <p class="text-xs text-indigo-600 font-semibold mb-1">${n.date}</p>
+            <p class="text-sm text-slate-700 whitespace-pre-wrap break-words pr-6">${n.text}</p>
+            <button onclick="deleteDiaryEntry('${petId}', '${n.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `).join('');
     lucide.createIcons();
 }
 
@@ -599,9 +803,9 @@ function renderSchedule() {
     const cc=tasks.filter(t=>t.isCompleted).length; const tc=tasks.length; const p=tc===0?0:Math.round((cc/tc)*100);
     document.getElementById('treatment-progress-text').textContent=tc===0?'Нет процедур':`Выполнено ${cc} из ${tc}`;
     document.getElementById('progress-percent').textContent=`${p}%`; document.getElementById('progress-bar').style.width=`${p}%`;
-    if(!tc){c.innerHTML='<div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><p class="text-3xl mb-2">😎</p><p>Свободный день!</p></div>';updateWidget(tasks,p);return;}
+    if(!tc){c.innerHTML='<div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><p class="text-3xl mb-2">😎</p><p>Свободный день!</p></div>';return;}
     c.innerHTML=tasks.map(t=>{ const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[t.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all ${t.isCompleted?'opacity-60 bg-slate-50':''}"><button onclick="toggleTask('${ds}','${t.id}')" class="w-8 h-8 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${t.isCompleted?'bg-green-500 border-green-500 text-white':'border-slate-300 hover:border-indigo-400'}">${t.isCompleted?'<i data-lucide="check" class="w-4 h-4"></i>':''}</button><div class="flex-grow ${t.isCompleted?'line-through text-slate-500':''}"><div class="font-semibold text-sm text-slate-900">${ti} ${t.name} <span class="text-xs font-normal text-slate-500">(${t.dosage})</span></div><div class="text-xs text-slate-500 mt-0.5">${t.petAvatar} ${t.petName} • 🕐 ${t.time}</div>${t.notes?`<div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-2 flex gap-1.5"><span>💡</span><span>${t.notes}</span></div>`:''}</div></div>`; }).join('');
-    lucide.createIcons(); updateWidget(tasks,p);
+    lucide.createIcons();
 }
 
 function toggleTask(ds, mId) {
@@ -612,7 +816,6 @@ function toggleTask(ds, mId) {
 }
 function resetDayCompletions() { const ds=getDateStr(selectedDate); if(state.completions[ds]&&confirm('Сбросить день?')){delete state.completions[ds]; saveData(); renderSchedule(); updateStats();} }
 function updateStats() { document.getElementById('stat-pets-count').textContent=state.pets.length; document.getElementById('stat-active-meds').textContent=state.meds.length; document.getElementById('stat-completed-today').textContent=getTasksForDate(new Date()).filter(t=>t.isCompleted).length; }
-function updateWidget(tasks, p) { document.getElementById('widget-title').textContent='Сегодня'; document.getElementById('widget-subtitle').textContent=`${tasks.filter(t=>t.isCompleted).length} из ${tasks.length} выполнено`; document.getElementById('widget-progress-bar').style.width=`${p}%`; const l=document.getElementById('widget-tasks-list'); if(!tasks.length){l.innerHTML='<p class="text-white/50 text-center">Нет задач</p>';return;} l.innerHTML=tasks.map(t=>`<div class="flex items-center gap-3 p-3 rounded-xl ${t.isCompleted?'bg-white/10':'bg-white/5 border border-white/10'}"><div class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${t.isCompleted?'bg-green-400 border-green-400':'border-white/30'}">${t.isCompleted?'✓':''}</div><div><span class="${t.isCompleted?'line-through text-white/50':''}">${t.name} <span class="text-white/40">${t.time}</span></span>${t.notes?`<div class="text-[10px] text-amber-300 mt-0.5">💡 ${t.notes}</div>`:''}</div></div>`).join(''); }
 
 // ==================== НАСТРОЙКИ ====================
 function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`kotomedic_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
