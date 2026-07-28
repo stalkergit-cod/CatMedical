@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dva_hvosta-cache-v1'; // Увеличьте версию кэша (v3), если обновляли файл!
+const CACHE_NAME = 'dva_hvosta-cache-v1'; // Новая версия кэша!
 const urlsToCache = [
   './',
   './index.html',
@@ -31,6 +31,21 @@ self.addEventListener('activate', event => {
   return self.clients.claim();
 });
 
+// Обработка клика по уведомлению
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(clientList => {
+      // Если приложение уже открыто, просто фокусируемся на нем
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      // Если закрыто - открываем
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
+});
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
@@ -48,7 +63,6 @@ self.addEventListener('fetch', event => {
             return response;
           }
         ).catch(() => {
-           // Если нет интернета и нет в кэше - отдаем главную страницу
            if (event.request.mode === 'navigate') {
                return caches.match('./index.html');
            }
