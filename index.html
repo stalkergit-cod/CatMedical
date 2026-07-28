@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>КотоМедик — Календарь Лечения Питомцев</title>
+    <title>Два хвоста — Календарь Лечения Питомцев</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="КотоМедик">
+    <meta name="apple-mobile-web-app-title" content="Два хвоста">
     
     <style>
         body {
@@ -134,7 +134,7 @@
             <div class="flex items-center space-x-3">
                 <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl"><i data-lucide="heart-pulse" class="w-6 h-6"></i></div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-900 leading-tight">КотоМедик</h1>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Два хвоста</h1>
                     <p class="text-xs text-slate-500">Забота о здоровье питомцев</p>
                 </div>
             </div>
@@ -151,7 +151,7 @@
         <div class="max-w-md mx-auto flex items-center justify-around text-xs text-slate-500">
             <div class="flex flex-col items-center">
                 <span class="font-bold text-slate-800 text-sm" id="stat-pets-count">0</span>
-                <span>Котиков</span>
+                <span>Питомцев</span>
             </div>
             <div class="h-5 w-[1px] bg-slate-200"></div>
             <div class="flex flex-col items-center">
@@ -242,9 +242,9 @@
             <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-center text-white">
                 <div class="text-6xl mb-3">🐾</div>
                 <h2 class="text-2xl font-bold">Добро пожаловать!</h2>
-                <p class="text-indigo-100 text-sm mt-1">Спасибо, что выбрали КотоМедик</p>
+                <p class="text-indigo-100 text-sm mt-1">Спасибо, что выбрали "Два хвоста"</p>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-6 space-y-5">
                 <div class="space-y-3 text-left text-sm text-slate-600">
                     <div class="flex items-center gap-3">
                         <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0"><i data-lucide="calendar-check" class="w-4 h-4"></i></div>
@@ -259,8 +259,21 @@
                         <span>Ведите дневник здоровья и питания</span>
                     </div>
                 </div>
-                <button onclick="closeWelcomeModal()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm transition-colors">
-                    Начать!
+
+                <!-- Блок установки PWA -->
+                <div id="pwa-install-block" class="space-y-3">
+                    <button id="installAppBtn" onclick="triggerPwaInstall()" class="hidden w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-5 h-5"></i> Установить приложение
+                    </button>
+                    
+                    <div id="iosInstallHint" class="hidden bg-slate-50 p-3 rounded-xl text-center text-xs text-slate-500 space-y-1">
+                        <p class="font-semibold text-slate-600">Установка на iPhone/iPad</p>
+                        <p>Нажмите кнопку <i data-lucide="share" class="w-3 h-3 inline-block align-text-bottom"></i> «Поделиться» в Safari и выберите «На экран "Домой"».</p>
+                    </div>
+                </div>
+
+                <button onclick="closeWelcomeModal()" class="w-full py-2.5 text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
+                    Продолжить в браузере
                 </button>
             </div>
         </div>
@@ -296,7 +309,7 @@
                 <input type="hidden" id="editPetId" value="">
                 <div class="flex flex-col items-center justify-center pb-2">
                     <div class="relative w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
-                        <div id="avatar-preview" class="w-full h-full flex items-center justify-center text-5xl bg-cover bg-center">🐱</div>
+                        <div id="avatar-preview" class="w-full h-full flex items-center justify-center text-5xl bg-cover bg-center">🐾</div>
                         <button type="button" id="clear-photo-btn" onclick="clearSelectedPhoto()" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-lg shadow hover:bg-red-600 hidden transition-colors z-10"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                     </div>
                     <label class="mt-2.5 cursor-pointer bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors">
@@ -306,6 +319,12 @@
                 </div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Кличка *</label><input type="text" id="petName" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Барсик"></div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Порода / Описание</label><input type="text" id="petBreed" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Серый британец"></div>
+                
+                <!-- ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ -->
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Рег. номер / Чип</label><input type="text" id="petRegNumber" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: 123456789012345"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Хронические болезни / Аллергии</label><input type="text" id="petChronic" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: Мочекаменная болезнь"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Особые пометки</label><textarea id="petNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: боится собак, ест только влажный корм..."></textarea></div>
+
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Аватар</label><div class="grid grid-cols-5 gap-2" id="emoji-selector"></div></div>
                 <div class="pt-2 flex gap-3">
                     <button type="button" onclick="closeModal('addPetModal')" class="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Отмена</button>
@@ -358,7 +377,7 @@
                         <label class="day-check flex flex-col items-center justify-center p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs transition-all select-none hover:bg-slate-50"><input type="checkbox" name="medDays" value="7" class="sr-only"><span class="font-bold">Вс</span></label>
                     </div>
                 </div>
-                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Заметки</label><textarea id="medNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: давать после еды..."></textarea></div>
+                <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Заметки к лекарству</label><textarea id="medNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: давать после еды..."></textarea></div>
                 <div class="pt-2 flex gap-3">
                     <button type="button" onclick="closeModal('addMedModal')" class="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Отмена</button>
                     <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm">Сохранить</button>
@@ -415,15 +434,14 @@
 
 <script>
 // ==================== КОНСТАНТЫ И СОСТОЯНИЕ ====================
-const STORAGE_KEY = 'kotomedic_data';
-const WELCOME_KEY = 'kotomedic_welcomed';
-const THEME_KEY = 'kotomedic_theme';
+const STORAGE_KEY = 'dva_hvosta_data';
+const WELCOME_KEY = 'dva_hvosta_welcomed';
+const THEME_KEY = 'dva_hvosta_theme';
 const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🦎', '🐵'];
 const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const TABS = ['today', 'pets', 'meds'];
 
-// Цвета для мета-тега статус-бара браузера
 const themeColors = {
     default: '#4f46e5',
     green: '#059669',
@@ -433,11 +451,12 @@ const themeColors = {
 
 let state = { pets: [], meds: [], completions: {} };
 let selectedDate = new Date();
-let currentPetAvatar = '🐱';
+let currentPetAvatar = '🐾';
 let currentPetPhoto = null;
 let activeTabIdx = 0;
 let firedAlerts = new Set();
 let currentDiaryPetId = null; 
+let deferredPrompt = null; 
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -457,6 +476,38 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
 function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ alert("Закончилось место! Удалите фото питомцев."); } }
 
+// ==================== УСТАНОВКА PWA ====================
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installAppBtn').classList.remove('hidden');
+    showToast('Приложение готово к установке!', 'Нажмите кнопку "Установить" в приветственном окне.', 'download');
+});
+
+function triggerPwaInstall() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                showToast('Установка началась', 'Ищите иконку на главном экране!', 'check-circle');
+                closeWelcomeModal();
+            } else {
+                showToast('Установка отменена', 'Вы можете установить приложение позже через меню браузера.', 'info');
+            }
+            deferredPrompt = null;
+            document.getElementById('installAppBtn').classList.add('hidden');
+        });
+    } else {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isChrome = /Chrome/i.test(navigator.userAgent);
+        if (isAndroid && isChrome) {
+            showToast('Ручная установка', 'Нажмите на три точки в правом верхнем углу Chrome и выберите "Установить приложение" или "Добавить на главный экран".', 'info');
+        } else {
+            showToast('Как установить', 'Откройте меню браузера и выберите "Добавить на главный экран".', 'info');
+        }
+    }
+}
+
 // ==================== ТЕМЫ ОФОРМЛЕНИЯ ====================
 function loadTheme() {
     const savedTheme = localStorage.getItem(THEME_KEY) || 'default';
@@ -470,15 +521,10 @@ function setTheme(themeName) {
 }
 
 function applyTheme(themeName) {
-    // Удаляем старые классы тем
     document.body.classList.remove('theme-default', 'theme-green', 'theme-pink', 'theme-amber');
-    // Добавляем новую
     document.body.classList.add('theme-' + themeName);
-    
-    // Меняем цвет статус-бара
     document.getElementById('meta-theme-color').setAttribute('content', themeColors[themeName]);
     
-    // Подсвечиваем выбранную кнопку
     document.querySelectorAll('.theme-option').forEach(el => {
         if (el.dataset.theme === themeName) {
             el.classList.add('border-slate-800', 'scale-105');
@@ -494,6 +540,14 @@ function applyTheme(themeName) {
 function checkFirstVisit() {
     if (!localStorage.getItem(WELCOME_KEY)) {
         openModal('welcomeModal');
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isStandalone) return;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            document.getElementById('iosInstallHint').classList.remove('hidden');
+        } else if (deferredPrompt) {
+            document.getElementById('installAppBtn').classList.remove('hidden');
+        }
     }
 }
 
@@ -507,39 +561,23 @@ function setupSwipeGestures() {
     const container = document.getElementById('swipe-container');
     let touchStartX = 0;
     let touchEndX = 0;
-
-    container.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
-    container.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe(touchStartX, touchEndX);
-    }, { passive: true });
+    container.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    container.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(touchStartX, touchEndX); }, { passive: true });
 }
 
 function handleSwipe(startX, endX) {
     const diff = startX - endX;
     if (Math.abs(diff) < 80) return;
-
-    if (diff > 0 && activeTabIdx < TABS.length - 1) {
-        switchTab(TABS[activeTabIdx + 1], activeTabIdx + 1);
-    } else if (diff < 0 && activeTabIdx > 0) {
-        switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
-    }
+    if (diff > 0 && activeTabIdx < TABS.length - 1) switchTab(TABS[activeTabIdx + 1], activeTabIdx + 1);
+    else if (diff < 0 && activeTabIdx > 0) switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
 }
 
 // ==================== УВЕДОМЛЕНИЯ ====================
 function requestNotifPermission() {
-    if (!('Notification' in window)) {
-        alert('Ваш браузер не поддерживает системные уведомления. Внутри приложения они будут работать.');
-        return;
-    }
+    if (!('Notification' in window)) { alert('Ваш браузер не поддерживает системные уведомления.'); return; }
     Notification.requestPermission().then(permission => {
         updateNotifButtonUI();
-        if (permission === 'granted') {
-            showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring');
-        }
+        if (permission === 'granted') showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring');
     });
 }
 
@@ -560,7 +598,6 @@ function startNotificationChecker() {
         const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         const dateStr = getDateStr(now);
         const tasks = getTasksForDate(now);
-
         tasks.forEach(task => {
             const alertId = `${dateStr}_${task.id}`;
             if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
@@ -569,10 +606,7 @@ function startNotificationChecker() {
                 showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
                 playCompletionSound();
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('КотоМедик: Пора дать лекарство!', {
-                        body: msg,
-                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐈‍⬛</text></svg>'
-                    });
+                    new Notification('Два хвоста: Пора дать лекарство!', { body: msg, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐾</text></svg>' });
                 }
             }
         });
@@ -585,13 +619,8 @@ function showToast(title, body, icon = 'info') {
     toast.className = 'toast-enter bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3 w-full max-w-sm pointer-events-auto cursor-pointer';
     toast.onclick = () => removeToast(toast);
     toast.innerHTML = `
-        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl flex-shrink-0">
-            <i data-lucide="${icon}" class="w-5 h-5"></i>
-        </div>
-        <div class="flex-grow">
-            <h4 class="font-bold text-sm text-slate-900">${title}</h4>
-            <p class="text-xs text-slate-500 mt-0.5">${body}</p>
-        </div>
+        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl flex-shrink-0"><i data-lucide="${icon}" class="w-5 h-5"></i></div>
+        <div class="flex-grow"><h4 class="font-bold text-sm text-slate-900">${title}</h4><p class="text-xs text-slate-500 mt-0.5">${body}</p></div>
     `;
     container.appendChild(toast);
     lucide.createIcons();
@@ -609,8 +638,7 @@ function removeToast(toastElement) {
 function playCompletionSound() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(600, ctx.currentTime);
@@ -623,23 +651,15 @@ function playCompletionSound() {
 
 // ==================== НАВИГАЦИЯ ====================
 function switchTab(tabName, idx = null) {
-    if (idx !== null) activeTabIdx = idx;
-    else activeTabIdx = TABS.indexOf(tabName);
-
+    if (idx !== null) activeTabIdx = idx; else activeTabIdx = TABS.indexOf(tabName);
     document.querySelectorAll('.tab-btn').forEach((btn, i) => {
         btn.classList.remove('text-indigo-600', 'bg-indigo-50/70');
         btn.classList.add('text-slate-500');
-        if (i === activeTabIdx) {
-            btn.classList.add('text-indigo-600', 'bg-indigo-50/70');
-            btn.classList.remove('text-slate-500');
-        }
+        if (i === activeTabIdx) { btn.classList.add('text-indigo-600', 'bg-indigo-50/70'); btn.classList.remove('text-slate-500'); }
     });
-
     document.querySelectorAll('main > div').forEach(div => { div.classList.add('hidden'); div.classList.remove('fade-in'); });
     const target = document.getElementById(`content-${tabName}`);
-    target.classList.remove('hidden');
-    void target.offsetWidth; 
-    target.classList.add('fade-in');
+    target.classList.remove('hidden'); void target.offsetWidth; target.classList.add('fade-in');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     lucide.createIcons();
 }
@@ -664,11 +684,24 @@ function getDateStr(d) { return d.toISOString().split('T')[0]; }
 function initEmojiSelector() { const c=document.getElementById('emoji-selector'); EMOJIS.forEach(e=>{ const b=document.createElement('button'); b.type='button'; b.className='text-2xl p-2 rounded-lg hover:bg-slate-100 transition-colors border-2 border-transparent focus:outline-none'; b.textContent=e; b.onclick=()=>{currentPetAvatar=e; currentPetPhoto=null; updateAvatarPreview(); document.getElementById('clear-photo-btn').classList.add('hidden');}; c.appendChild(b); }); }
 function updateAvatarPreview() { const p=document.getElementById('avatar-preview'); if(currentPetPhoto){p.style.backgroundImage=`url(${currentPetPhoto})`;p.textContent='';document.getElementById('clear-photo-btn').classList.remove('hidden');}else{p.style.backgroundImage='none';p.textContent=currentPetAvatar;document.getElementById('clear-photo-btn').classList.add('hidden');} }
 function handlePhotoUpload(input) { const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){ const img=new Image(); img.onload=function(){ const c=document.createElement('canvas'); let w=img.width,h=img.height; if(w>h){if(w>200){h*=200/w;w=200;}}else{if(h>200){w*=200/h;h=200;}} c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); currentPetPhoto=c.toDataURL('image/jpeg',0.7); currentPetAvatar=''; updateAvatarPreview(); }; img.src=e.target.result; }; r.readAsDataURL(f); }
-function clearSelectedPhoto() { currentPetPhoto=null; currentPetAvatar='🐱'; updateAvatarPreview(); document.getElementById('petPhotoInput').value=''; }
+function clearSelectedPhoto() { currentPetPhoto=null; currentPetAvatar='🐾'; updateAvatarPreview(); document.getElementById('petPhotoInput').value=''; }
 
 function openAddPetModal(petId=null) {
-    document.getElementById('petForm').reset(); document.getElementById('editPetId').value=''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Новый питомец'; currentPetPhoto=null; currentPetAvatar='🐱'; updateAvatarPreview();
-    if(petId){ const p=state.pets.find(x=>x.id===petId); if(p){ document.getElementById('editPetId').value=p.id; document.getElementById('petName').value=p.name; document.getElementById('petBreed').value=p.breed||''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Редактирование'; if(p.photo){currentPetPhoto=p.photo;currentPetAvatar='';}else{currentPetAvatar=p.avatar;currentPetPhoto=null;} updateAvatarPreview(); } }
+    document.getElementById('petForm').reset(); document.getElementById('editPetId').value=''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Новый питомец'; currentPetPhoto=null; currentPetAvatar='🐾'; updateAvatarPreview();
+    if(petId){ 
+        const p=state.pets.find(x=>x.id===petId); 
+        if(p){ 
+            document.getElementById('editPetId').value=p.id; 
+            document.getElementById('petName').value=p.name; 
+            document.getElementById('petBreed').value=p.breed||''; 
+            document.getElementById('petRegNumber').value = p.regNumber || '';
+            document.getElementById('petChronic').value = p.chronic || '';
+            document.getElementById('petNotes').value = p.notes || '';
+            document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Редактирование'; 
+            if(p.photo){currentPetPhoto=p.photo;currentPetAvatar='';}else{currentPetAvatar=p.avatar;currentPetPhoto=null;} 
+            updateAvatarPreview(); 
+        } 
+    }
     openModal('addPetModal');
 }
 
@@ -680,6 +713,9 @@ function savePet(e) {
         id, 
         name:document.getElementById('petName').value.trim(), 
         breed:document.getElementById('petBreed').value.trim(), 
+        regNumber: document.getElementById('petRegNumber').value.trim(), 
+        chronic: document.getElementById('petChronic').value.trim(),   
+        notes: document.getElementById('petNotes').value.trim(),       
         avatar:currentPetAvatar, 
         photo:currentPetPhoto,
         diary: existing && existing.diary ? existing.diary : [] 
@@ -696,17 +732,31 @@ function deletePet(id) { if(!confirm('Удалить питомца и все е
 
 function renderPets() {
     const c=document.getElementById('pets-list-container');
-    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">😿</p><p>Добавьте первого питомца!</p></div>';return;}
+    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">🐾</p><p>Добавьте первого питомца!</p></div>';return;}
+    
     c.innerHTML=state.pets.map(p=>{
         const mc=state.meds.filter(m=>m.petId===p.id).length; 
         const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; 
+        
+        let subtitle = p.breed || 'Без породы';
+        if (p.regNumber) subtitle += ` • №${p.regNumber}`;
+        subtitle += ` • ${mc} назнач.`;
+
+        let chronicBadge = '';
+        if (p.chronic) {
+            chronicBadge = `<div class="mt-1.5 inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md text-[10px] border border-amber-100 font-medium">
+                <i data-lucide="alert-triangle" class="w-3 h-3"></i> ${p.chronic}
+            </div>`;
+        }
+
         return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
             ${a}
-            <div class="flex-grow">
-                <h4 class="font-bold text-slate-900">${p.name}</h4>
-                <p class="text-xs text-slate-500">${p.breed||'Без описания'} • ${mc} назнач.</p>
+            <div class="flex-grow overflow-hidden">
+                <h4 class="font-bold text-slate-900 truncate">${p.name}</h4>
+                <p class="text-xs text-slate-500 truncate">${subtitle}</p>
+                ${chronicBadge}
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-1 flex-shrink-0">
                 <button onclick="openPetDiary('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Дневник"><i data-lucide="notebook-pen" class="w-5 h-5"></i></button>
                 <button onclick="openAddPetModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Редактировать"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                 <button onclick="deletePet('${p.id}')" class="text-slate-400 hover:text-red-500 p-1" title="Удалить"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
@@ -733,13 +783,10 @@ function addDiaryEntry() {
     const p = state.pets.find(x => x.id === currentDiaryPetId);
     if (!p) return;
     if (!p.diary) p.diary = [];
-    
     const now = new Date();
     const dateStr = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    
     p.diary.unshift({ id: 'note_'+Date.now(), date: dateStr, text: text });
     saveData();
-    
     document.getElementById('diaryInput').value = '';
     renderDiaryEntries(currentDiaryPetId);
     showToast('Запись добавлена', 'Дневник обновлен', 'notebook-pen');
@@ -747,27 +794,18 @@ function addDiaryEntry() {
 
 function deleteDiaryEntry(petId, noteId) {
     const p = state.pets.find(x => x.id === petId);
-    if (p && p.diary) {
-        p.diary = p.diary.filter(n => n.id !== noteId);
-        saveData();
-        renderDiaryEntries(petId);
-    }
+    if (p && p.diary) { p.diary = p.diary.filter(n => n.id !== noteId); saveData(); renderDiaryEntries(petId); }
 }
 
 function renderDiaryEntries(petId) {
     const p = state.pets.find(x => x.id === petId);
     const c = document.getElementById('diaryList');
-    if (!p || !p.diary || !p.diary.length) {
-        c.innerHTML = '<p class="text-center text-slate-400 text-sm py-6">Пока нет записей.<br>Начните вести дневник здоровья!</p>';
-        return;
-    }
+    if (!p || !p.diary || !p.diary.length) { c.innerHTML = '<p class="text-center text-slate-400 text-sm py-6">Пока нет записей.<br>Начните вести дневник здоровья!</p>'; return; }
     c.innerHTML = p.diary.map(n => `
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 relative">
             <p class="text-xs text-indigo-600 font-semibold mb-1">${n.date}</p>
             <p class="text-sm text-slate-700 whitespace-pre-wrap break-words pr-6">${n.text}</p>
-            <button onclick="deleteDiaryEntry('${petId}', '${n.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
+            <button onclick="deleteDiaryEntry('${petId}', '${n.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
     `).join('');
     lucide.createIcons();
@@ -818,7 +856,7 @@ function resetDayCompletions() { const ds=getDateStr(selectedDate); if(state.com
 function updateStats() { document.getElementById('stat-pets-count').textContent=state.pets.length; document.getElementById('stat-active-meds').textContent=state.meds.length; document.getElementById('stat-completed-today').textContent=getTasksForDate(new Date()).filter(t=>t.isCompleted).length; }
 
 // ==================== НАСТРОЙКИ ====================
-function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`kotomedic_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
+function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`dva_hvosta_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
 function importData(ev) { const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){try{const s=JSON.parse(e.target.result);if(s.pets&&s.meds){state=s;saveData();renderAll();closeModal('settingsModal');alert("Импортировано!");}else alert("Ошибка формата");}catch(e){alert("Ошибка чтения");}}; r.readAsText(f); ev.target.value=''; }
 function clearAllData() { if(confirm("Удалить ВСЕ данные?")){localStorage.removeItem(STORAGE_KEY);state={pets:[],meds:[],completions:{}};renderAll();closeModal('settingsModal');} }
 
