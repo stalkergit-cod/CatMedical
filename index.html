@@ -320,7 +320,6 @@
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Кличка *</label><input type="text" id="petName" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Барсик"></div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Порода / Описание</label><input type="text" id="petBreed" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Серый британец"></div>
                 
-                <!-- ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ -->
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Рег. номер / Чип</label><input type="text" id="petRegNumber" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: 123456789012345"></div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Хронические болезни / Аллергии</label><input type="text" id="petChronic" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: Мочекаменная болезнь"></div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Особые пометки</label><textarea id="petNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: боится собак, ест только влажный корм..."></textarea></div>
@@ -457,6 +456,7 @@ let activeTabIdx = 0;
 let firedAlerts = new Set();
 let currentDiaryPetId = null; 
 let deferredPrompt = null; 
+let audioCtx = null; // Глобальный контекст для звука
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -471,6 +471,18 @@ document.addEventListener('DOMContentLoaded', () => {
     updateNotifButtonUI();
     checkFirstVisit();
     lucide.createIcons();
+    
+    // Разблокировка аудио при первом касании (требование мобильных браузеров)
+    const unlockAudio = () => {
+        if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('touchstart', unlockAudio, { once: true });
 });
 
 function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
@@ -572,12 +584,16 @@ function handleSwipe(startX, endX) {
     else if (diff < 0 && activeTabIdx > 0) switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
 }
 
-// ==================== УВЕДОМЛЕНИЯ ====================
+// ==================== УВЕДОМЛЕНИЯ И ЗВУК ====================
 function requestNotifPermission() {
     if (!('Notification' in window)) { alert('Ваш браузер не поддерживает системные уведомления.'); return; }
     Notification.requestPermission().then(permission => {
         updateNotifButtonUI();
-        if (permission === 'granted') showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring');
+        if (permission === 'granted') {
+            showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring');
+            // Тестовый звук сразу после нажатия (разблокирует аудио)
+            playCompletionSound(); 
+        }
     });
 }
 
@@ -593,24 +609,51 @@ function updateNotifButtonUI() {
 }
 
 function startNotificationChecker() {
+    // Проверяем каждые 30 секунд для большей точности
     setInterval(() => {
         const now = new Date();
         const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         const dateStr = getDateStr(now);
         const tasks = getTasksForDate(now);
+
         tasks.forEach(task => {
             const alertId = `${dateStr}_${task.id}`;
             if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
                 firedAlerts.add(alertId);
                 const msg = `${task.petName}: ${task.name} (${task.dosage})`;
+                
+                // 1. Внутреннее уведомление (Toast)
                 showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
+                
+                // 2. Звуковой сигнал
                 playCompletionSound();
+                
+                // 3. Системное уведомление (в строке состояния)
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Два хвоста: Пора дать лекарство!', { body: msg, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐾</text></svg>' });
+                    const options = {
+                        body: msg,
+                        icon: 'icon-192.png',
+                        badge: 'icon-192.png',
+                        vibrate: [200, 100, 200], // Вибрация
+                        tag: 'med-reminder-' + task.id,
+                        renotify: true
+                    };
+                    
+                    // Использование Service Worker для показа уведомления
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.ready.then(registration => {
+                            registration.showNotification('Два хвоста: Пора дать лекарство!', options);
+                        }).catch(err => {
+                            // Запасной вариант
+                            new Notification('Два хвоста: Пора дать лекарство!', options);
+                        });
+                    } else {
+                        new Notification('Два хвоста: Пора дать лекарство!', options);
+                    }
                 }
             }
         });
-    }, 60000);
+    }, 30000); // 30 секунд
 }
 
 function showToast(title, body, icon = 'info') {
@@ -634,19 +677,29 @@ function removeToast(toastElement) {
     setTimeout(() => toastElement.remove(), 300);
 }
 
-// ==================== ЗВУК ====================
 function playCompletionSound() {
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator(), gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); 
+        gain.connect(audioCtx.destination);
+        
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
-    } catch (e) {}
+        // Имитация звона "динь-дон"
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        
+        osc.start(audioCtx.currentTime); 
+        osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) { console.log("Audio error:", e); }
 }
 
 // ==================== НАВИГАЦИЯ ====================
