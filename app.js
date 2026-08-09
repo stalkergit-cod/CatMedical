@@ -1592,7 +1592,30 @@ function renderMeds() {
 // ==================== РАСПИСАНИЕ И ПРОГРЕСС ====================
 function getTasksForDate(date) {
     const ds=getDateStr(date); const ed=getJsDayToEuDay(date.getDay());
-    return state.meds.filter(m=>m.days.includes(ed)).map(m=>{ const p=state.pets.find(x=>x.id===m.petId); return {...m, petName:p?p.name:'Удален', petAvatar:p?.avatar||'❓', isCompleted:state.completions[ds]?.[m.id]===true}; }).sort((a,b)=>a.time.localeCompare(b.time));
+    // Получаем процедуры на этот день
+    const medTasks = state.meds.filter(m=>m.days.includes(ed)).map(m=>{ const p=state.pets.find(x=>x.id===m.petId); return {...m, petName:p?p.name:'Удален', petAvatar:p?.avatar||'❓', isCompleted:state.completions[ds]?.[m.id]===true, taskType:'med'}; });
+    
+    // Получаем приемы к врачу на этот день
+    const appointmentTasks = state.appointments
+        .filter(a => a.date === ds)
+        .map(a => {
+            const p = state.pets.find(x => x.id === a.petId);
+            return {
+                id: 'appt-' + a.id,
+                name: `Прием: ${a.doctorName} (${a.doctorTitle})`,
+                dosage: a.clinicName,
+                time: a.time,
+                petName: p ? p.name : 'Удален',
+                petAvatar: p?.avatar || '❓',
+                notes: a.address || a.notes,
+                isCompleted: state.completions[ds]?.['appt-' + a.id] === true,
+                taskType: 'appointment',
+                appointmentData: a
+            };
+        });
+    
+    // Объединяем и сортируем по времени
+    return [...medTasks, ...appointmentTasks].sort((a,b)=>a.time.localeCompare(b.time));
 }
 function renderSchedule() {
     const ds=getDateStr(selectedDate); const tasks=getTasksForDate(selectedDate); const c=document.getElementById('today-tasks-container');
@@ -1601,7 +1624,7 @@ function renderSchedule() {
     document.getElementById('treatment-progress-text').textContent=tc===0?'Нет процедур':`Выполнено ${cc} из ${tc}`;
     document.getElementById('progress-percent').textContent=`${p}%`; document.getElementById('progress-bar').style.width=`${p}%`;
     if(!tc){c.innerHTML='<div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><p class="text-3xl mb-2">😎</p><p>Свободный день!</p></div>';return;}
-    c.innerHTML=tasks.map(t=>{ const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[t.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all ${t.isCompleted?'opacity-60 bg-slate-50':''}"><button onclick="toggleTask('${ds}','${t.id}')" class="w-8 h-8 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${t.isCompleted?'bg-green-500 border-green-500 text-white':'border-slate-300 hover:border-indigo-400'}">${t.isCompleted?'<i data-lucide="check" class="w-4 h-4"></i>':''}</button><div class="flex-grow ${t.isCompleted?'line-through text-slate-500':''}"><div class="font-semibold text-sm text-slate-900">${ti} ${t.name} <span class="text-xs font-normal text-slate-500">(${t.dosage})</span></div><div class="text-xs text-slate-500 mt-0.5">${t.petAvatar} ${t.petName} • 🕐 ${t.time}</div>${t.notes?`<div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-2 flex gap-1.5"><span>💡</span><span>${t.notes}</span></div>`:''}</div></div>`; }).join('');
+    c.innerHTML=tasks.map(t=>{ const ti = t.taskType === 'appointment' ? '🩺' : ({injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[t.type]||'💊'); return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all ${t.isCompleted?'opacity-60 bg-slate-50':''}"><button onclick="toggleTask('${ds}','${t.id}')" class="w-8 h-8 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${t.isCompleted?'bg-green-500 border-green-500 text-white':'border-slate-300 hover:border-indigo-400'}">${t.isCompleted?'<i data-lucide="check" class="w-4 h-4"></i>':''}</button><div class="flex-grow ${t.isCompleted?'line-through text-slate-500':''}"><div class="font-semibold text-sm text-slate-900">${ti} ${t.name} <span class="text-xs font-normal text-slate-500">(${t.dosage})</span></div><div class="text-xs text-slate-500 mt-0.5">${t.petAvatar} ${t.petName} • 🕐 ${t.time}</div>${t.notes?`<div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-2 flex gap-1.5"><span>💡</span><span>${t.notes}</span></div>`:''}</div></div>`; }).join('');
     lucide.createIcons();
 }
 function toggleTask(ds, mId) {
