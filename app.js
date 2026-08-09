@@ -5,7 +5,7 @@ const THEME_KEY = 'dva_hvosta_theme';
 const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🐎', '🐵'];
 const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-const TABS = ['today', 'pets', 'meds'];
+const TABS = ['today', 'pets', 'meds', 'appointments'];
 
 const themeColors = {
     default: '#4f46e5',
@@ -14,7 +14,7 @@ const themeColors = {
     amber: '#d97706'
 };
 
-let state = { pets: [], meds: [], completions: {} };
+let state = { pets: [], meds: [], completions: {}, appointments: [] };
 let selectedDate = new Date();
 let currentPetAvatar = '🐾';
 let currentPetPhoto = null;
@@ -215,6 +215,7 @@ function loadData() {
             if (!parsed.pets || !Array.isArray(parsed.pets)) parsed.pets = [];
             if (!parsed.meds || !Array.isArray(parsed.meds)) parsed.meds = [];
             if (!parsed.completions || typeof parsed.completions !== 'object') parsed.completions = {};
+            if (!parsed.appointments || !Array.isArray(parsed.appointments)) parsed.appointments = [];
             state = parsed;
         }
     } catch(e) {
@@ -1615,8 +1616,179 @@ function updateStats() { document.getElementById('stat-pets-count').textContent=
 // ==================== НАСТРОЙКИ ====================
 function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`dva_hvosta_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
 function importData(ev) { const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){try{const s=JSON.parse(e.target.result);if(s.pets&&s.meds){state=s;saveData();renderAll();closeModal('settingsModal');alert("Импортировано!");}else alert("Ошибка формата");}catch(e){alert("Ошибка чтения");}}; r.readAsText(f); ev.target.value=''; }
-function clearAllData() { if(confirm("Удалить ВСЕ данные?")){localStorage.removeItem(STORAGE_KEY);state={pets:[],meds:[],completions:{}};renderAll();closeModal('settingsModal');updateAppBadge();} }
+function clearAllData() { if(confirm("Удалить ВСЕ данные?")){localStorage.removeItem(STORAGE_KEY);state={pets:[],meds:[],completions:{},appointments:[]};renderAll();closeModal('settingsModal');updateAppBadge();} }
 
 // ==================== ОБЩИЙ РЕНДЕР ====================
-function renderAll() { renderPets(); renderMeds(); renderSchedule(); updateStats(); lucide.createIcons(); updateAppBadge(); }
+function renderAll() { renderPets(); renderMeds(); renderAppointments(); renderSchedule(); updateStats(); lucide.createIcons(); updateAppBadge(); }
+
+// ==================== ПРИЕМЫ К ВРАЧУ ====================
+function openAddAppointmentModal(appointmentId = null) {
+    const form = document.getElementById('appointmentForm');
+    const title = document.getElementById('appointmentModalTitle');
+    if (!form || !title) return;
+    
+    form.reset();
+    document.getElementById('editAppointmentId').value = '';
+    title.innerHTML = '<i data-lucide="calendar-clock" class="text-indigo-600 w-5 h-5"></i> Запись на прием';
+    
+    const select = document.getElementById('appointmentPetId');
+    if (select) {
+        select.innerHTML = !state.pets.length
+            ? '<option value="" disabled selected>Сначала добавьте питомца</option>'
+            : state.pets.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+    }
+    
+    if (appointmentId) {
+        const appointment = state.appointments.find(x => x.id === appointmentId);
+        if (appointment) {
+            document.getElementById('editAppointmentId').value = appointment.id;
+            if (select) select.value = appointment.petId;
+            document.getElementById('appointmentDate').value = appointment.date;
+            document.getElementById('appointmentTime').value = appointment.time;
+            document.getElementById('appointmentClinic').value = appointment.clinic;
+            document.getElementById('appointmentAddress').value = appointment.address || '';
+            document.getElementById('appointmentDoctor').value = appointment.doctor;
+            document.getElementById('appointmentDoctorTitle').value = appointment.doctorTitle || '';
+            document.getElementById('appointmentNotes').value = appointment.notes || '';
+            title.innerHTML = '<i data-lucide="calendar-clock" class="text-indigo-600 w-5 h-5"></i> Редактирование приема';
+        }
+    }
+    openModal('addAppointmentModal');
+}
+
+function saveAppointment(e) {
+    e.preventDefault();
+    
+    if (!state.pets.length) {
+        alert("Сначала добавьте питомца!");
+        return;
+    }
+    
+    const id = document.getElementById('editAppointmentId').value || 'apt_' + Date.now();
+    const appointmentData = {
+        id,
+        petId: document.getElementById('appointmentPetId').value,
+        date: document.getElementById('appointmentDate').value,
+        time: document.getElementById('appointmentTime').value,
+        clinic: document.getElementById('appointmentClinic').value.trim(),
+        address: document.getElementById('appointmentAddress').value.trim(),
+        doctor: document.getElementById('appointmentDoctor').value.trim(),
+        doctorTitle: document.getElementById('appointmentDoctorTitle').value.trim(),
+        notes: document.getElementById('appointmentNotes').value.trim()
+    };
+    
+    try {
+        const idx = state.appointments.findIndex(a => a.id === id);
+        if (idx > -1) {
+            state.appointments[idx] = appointmentData;
+        } else {
+            state.appointments.push(appointmentData);
+        }
+        
+        saveData();
+        renderAppointments();
+        closeModal('addAppointmentModal');
+        showToast('Прием записан', `${appointmentData.clinic}, ${appointmentData.date}`, 'calendar-check');
+    } catch (error) {
+        console.error('Error saving appointment:', error);
+        alert('Ошибка при сохранении: ' + error.message);
+    }
+}
+
+function deleteAppointment(id) {
+    if (!confirm('Отменить запись на прием?')) return;
+    try {
+        state.appointments = state.appointments.filter(a => a.id !== id);
+        saveData();
+        renderAppointments();
+        showToast('Запись отменена', '', 'trash-2');
+    } catch (error) {
+        console.error('Error deleting appointment:', error);
+        alert('Ошибка при удалении');
+    }
+}
+
+function renderAppointments() {
+    const container = document.getElementById('appointments-list-container');
+    if (!container) return;
+    
+    // Сортируем приемы по дате и времени
+    const sortedAppointments = [...state.appointments].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB;
+    });
+    
+    if (!sortedAppointments.length) {
+        container.innerHTML = '<div class="text-center py-10 text-slate-400" role="status"><p class="text-4xl mb-2">🏥</p><p>Нет записей к врачу.</p></div>';
+        return;
+    }
+    
+    container.innerHTML = sortedAppointments.map(a => {
+        const pet = state.pets.find(x => x.id === a.petId);
+        const petName = pet ? escapeHtml(pet.name) : '<span class="text-red-400 line-through">Удален</span>';
+        const petAvatar = pet ? pet.avatar : '❓';
+        const isPast = new Date(`${a.date}T${a.time}`) < new Date();
+        
+        return `<article class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 ${isPast ? 'opacity-70 bg-slate-50' : ''}" aria-label="Прием: ${escapeHtml(a.clinic)}">
+            <div class="flex justify-between items-start">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">${petAvatar}</span>
+                    <div>
+                        <h4 class="font-bold text-slate-900">${escapeHtml(a.clinic)}</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">${petName}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2" role="group" aria-label="Действия">
+                    <button onclick="openAddAppointmentModal('${escapeHtml(a.id)}')" class="text-slate-400 hover:text-indigo-600 p-1" aria-label="Редактировать">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deleteAppointment('${escapeHtml(a.id)}')" class="text-slate-400 hover:text-red-500 p-1" aria-label="Удалить">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3 space-y-2">
+                <div class="flex flex-wrap gap-2 text-[11px]">
+                    <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium flex items-center gap-1">
+                        <i data-lucide="calendar" class="w-3 h-3"></i> ${formatAppointmentDate(a.date)}
+                    </span>
+                    <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium flex items-center gap-1">
+                        <i data-lucide="clock" class="w-3 h-3"></i> ${escapeHtml(a.time)}
+                    </span>
+                </div>
+                <div class="text-xs text-slate-600 flex items-center gap-1.5">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i>
+                    <span>${escapeHtml(a.address || 'Адрес не указан')}</span>
+                </div>
+                <div class="text-xs text-slate-600 flex items-center gap-1.5">
+                    <i data-lucide="user" class="w-3 h-3 text-slate-400"></i>
+                    <span>${escapeHtml(a.doctor)}${a.doctorTitle ? ` (${escapeHtml(a.doctorTitle)})` : ''}</span>
+                </div>
+                ${a.notes ? `<div class="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg flex gap-2" role="note">
+                    <span aria-hidden="true">💡</span><span>${escapeHtml(a.notes)}</span>
+                </div>` : ''}
+            </div>
+        </article>`;
+    }).join('');
+    lucide.createIcons();
+}
+
+function formatAppointmentDate(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const day = date.getDate();
+    const month = MONTHS[date.getMonth()];
+    const year = date.getFullYear();
+    const dayOfWeek = DAYS_MAP[getJsDayToEuDay(date.getDay())];
+    return `${day} ${month} ${year}, ${dayOfWeek}`;
+}
+
+// Добавляем отображение ближайших приемов в расписание
+function getUpcomingAppointments(limit = 3) {
+    const now = new Date();
+    return state.appointments
+        .filter(a => new Date(`${a.date}T${a.time}`) >= now)
+        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
+        .slice(0, limit);
+}
 
