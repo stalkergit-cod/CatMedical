@@ -18,6 +18,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Два хвоста">
     
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Календарь лечения питомцев: создавайте расписания уколов и таблеток, получайте напоминания, ведите дневник здоровья">
+    <meta name="keywords" content="питомцы, ветеринария, календарь лекарств, здоровье животных, уколы, таблетки">
+    <meta name="author" content="Два хвоста">
+    <meta property="og:title" content="Два хвоста — Календарь Лечения Питомцев">
+    <meta property="og:description" content="Забота о здоровье питомцев">
+    <meta property="og:type" content="website">
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -440,58 +448,11 @@
         </div>
     </div>
 
-<script>
-// ==================== КОНСТАНТЫ И СОСТОЯНИЕ ====================
-const STORAGE_KEY = 'dva_hvosta_data';
-const WELCOME_KEY = 'dva_hvosta_welcomed';
-const THEME_KEY = 'dva_hvosta_theme';
-const EMOJIS = ['🐱', '🐶', '🐰', '🐹', '🐦', '🐊', '🐢', '🐸', '🦎', '🐵'];
-const DAYS_MAP = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс' };
-const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-const TABS = ['today', 'pets', 'meds'];
-
-const themeColors = {
-    default: '#4f46e5',
-    green: '#059669',
-    pink: '#db2777',
-    amber: '#d97706'
-};
-
-let state = { pets: [], meds: [], completions: {} };
-let selectedDate = new Date();
-let currentPetAvatar = '🐾';
-let currentPetPhoto = null;
-let activeTabIdx = 0;
-let firedAlerts = new Set();
-let currentDiaryPetId = null; 
-let deferredPrompt = null; 
-let audioCtx = null; 
-
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
-document.addEventListener('DOMContentLoaded', () => {
-    loadTheme();
-    loadData();
-    initEmojiSelector();
-    renderCalendar();
-    renderAll();
-    setupSmartScroll();
-    setupSwipeGestures();
-    updateNotifButtonUI();
-    checkFirstVisit();
-    lucide.createIcons();
-    updateAppBadge();
-    registerSW(); // Запускаем SW и планировщик
+    <!-- Вынесенный JS файл с улучшениями -->
+    <script src="app.js" defer></script>
     
-    const unlockAudio = () => {
-        if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    };
-    document.addEventListener('click', unlockAudio, { once: true });
-    document.addEventListener('touchstart', unlockAudio, { once: true });
-});
-
-function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e){} }
-function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ alert("Закончилось место! Удалите фото питомцев."); } }
+</body>
+</html>
 
 // ==================== БЕЙДЖ ИКОНКИ ПРИЛОЖЕНИЯ ====================
 function updateAppBadge() {
