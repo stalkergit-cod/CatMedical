@@ -374,6 +374,7 @@ async function requestNotificationPermission() {
     if (Notification.permission === 'granted') {
         alert("Уведомления уже разрешены!");
         updateNotifButtonUI();
+        scheduleAllNotifications();
         return;
     }
     if (Notification.permission !== 'denied') {
@@ -382,6 +383,7 @@ async function requestNotificationPermission() {
             alert("Уведомления разрешены! Теперь вы будете получать напоминания.");
             updateNotifButtonUI();
             registerSW(); 
+            scheduleAllNotifications();
         }
     } else {
         alert("Уведомления заблокированы. Разрешите их в настройках браузера.");
@@ -401,6 +403,7 @@ function updateNotifButtonUI() {
 }
 
 function startNotificationChecker() {
+    // Проверяем каждое лекарство раз в минуту
     setInterval(() => {
         const now = new Date();
         const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -418,7 +421,65 @@ function startNotificationChecker() {
             }
         });
         updateAppBadge();
-    }, 30000);
+    }, 60000); // Проверка каждую минуту
+}
+
+// Планирование уведомлений через Notification API (работает даже при заблокированном экране)
+function scheduleAllNotifications() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    
+    // Очищаем все предыдущие запланированные уведомления (если браузер поддерживает)
+    if ('getNotifications' in Notification) {
+        Notification.getNotifications().then(notifications => {
+            notifications.forEach(n => n.close());
+        });
+    }
+
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    state.meds.forEach(med => {
+        // Проверяем каждый день на следующей неделе
+        for (let d = new Date(today); d <= nextWeek; d.setDate(d.getDate() + 1)) {
+            const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // Преобразуем в формат 1-7 (Пн-Вс)
+            
+            if (med.days.includes(dayOfWeek)) {
+                const medTime = med.time.split(':');
+                const notifyTime = new Date(d);
+                notifyTime.setHours(parseInt(medTime[0]), parseInt(medTime[1]), 0, 0);
+
+                // Если время уже прошло сегодня, пропускаем
+                if (notifyTime <= new Date()) continue;
+
+                const pet = state.pets.find(p => p.id === med.petId);
+                const petName = pet ? pet.name : 'Питомец';
+
+                // Создаем уведомление с отложенным временем
+                const title = `💊 Время лекарства: ${med.name}`;
+                const body = `Для ${petName}: ${med.dosage || ''} ${med.notes ? '(' + med.notes + ')' : ''}`;
+                
+                // Вычисляем задержку в миллисекундах
+                const delay = notifyTime.getTime() - new Date().getTime();
+                
+                // Используем setTimeout для отложенной отправки (до 1 часа вперед)
+                // Для более длительных периодов нужны Push-уведомления с сервером
+                if (delay <= 3600000) { // Максимум 1 час для setTimeout
+                    setTimeout(() => {
+                        sendSystemNotification({
+                            id: med.id,
+                            name: med.name,
+                            petName: petName,
+                            dosage: med.dosage,
+                            notes: med.notes
+                        });
+                    }, delay);
+                    
+                    console.log(`Запланировано уведомление: ${title} через ${Math.round(delay/1000)} сек`);
+                }
+            }
+        }
+    });
 }
 
 function sendSystemNotification(task) {
@@ -449,8 +510,31 @@ async function registerSW() {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
             console.log('SW registered:', registration.scope);
+            
             if (Notification.permission === 'granted') {
                 startNotificationChecker();
+                scheduleAllNotifications();
+                
+                // Отправляем данные о лекарствах в Service Worker для фоновой работы
+                if (registration.active) {
+                    registration.active.postMessage({
+                        type: 'SYNC_MEDS',
+                        meds: state.meds,
+                        pets: state.pets
+                    });
+                }
+                
+                // Пытаемся зарегистрировать периодическую синхронизацию (если поддерживается)
+                if ('periodicSync' in registration) {
+                    try {
+                        await registration.periodicSync.register('med-check', {
+                            minInterval: 15 * 60 * 1000 // 15 минут
+                        });
+                        console.log('Periodic Sync registered');
+                    } catch (e) {
+                        console.log('Periodic Sync not supported or failed:', e);
+                    }
+                }
             }
         } catch (error) {
             console.error('SW registration failed:', error);
@@ -1305,102 +1389,7 @@ function handleSwipe(startX, endX) {
     else if (diff < 0 && activeTabIdx > 0) switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
 }
 
-// ==================== УВЕДОМЛЕНИЯ (НОВАЯ ЛОГИКА) ====================
-
-// --- Функция запроса разрешений ---
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        alert("Ваш браузер не поддерживает уведомления");
-        return;
-    }
-    if (Notification.permission === 'granted') {
-        alert("Уведомления уже разрешены!");
-        updateNotifButtonUI();
-        return;
-    }
-    if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            alert("Уведомления разрешены! Теперь вы будете получать напоминания.");
-            updateNotifButtonUI();
-            registerSW(); 
-        }
-    } else {
-        alert("Уведомления заблокированы. Разрешите их в настройках браузера.");
-    }
-}
-
-function updateNotifButtonUI() {
-    const btn = document.getElementById('notif-perm-btn');
-    if ('Notification' in window && Notification.permission === 'granted') {
-        btn.innerHTML = '<i data-lucide="bell-check" class="w-4 h-4"></i> Уведомления включены ✓';
-        btn.classList.remove('bg-amber-50', 'text-amber-700', 'hover:bg-amber-100');
-        btn.classList.add('bg-green-50', 'text-green-700', 'hover:bg-green-100');
-        btn.disabled = true;
-        lucide.createIcons();
-    }
-}
-
-// --- Обновленная функция проверки расписания ---
-function startNotificationChecker() {
-    setInterval(() => {
-        const now = new Date();
-        const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        const dateStr = getDateStr(now);
-        const tasks = getTasksForDate(now);
-
-        tasks.forEach(task => {
-            const alertId = `${dateStr}_${task.id}`;
-            if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
-                firedAlerts.add(alertId);
-                const msg = `${task.petName}: ${task.name} (${task.dosage})`;
-                showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
-                playCompletionSound();
-                sendSystemNotification(task);
-            }
-        });
-        updateAppBadge();
-    }, 30000);
-}
-
-// --- Отправка уведомления через Service Worker ---
-function sendSystemNotification(task) {
-    const title = `💊 Время лекарства: ${task.name}`;
-    const body = `Для ${task.petName}: ${task.dosage || ''} ${task.notes ? '(' + task.notes + ')' : ''}`;
-
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            title: title,
-            body: body,
-            icon: 'icon-192.png',
-            tag: 'med-' + task.id
-        });
-    } else {
-        if (Notification.permission === 'granted') {
-            new Notification(title, {
-                body: body,
-                icon: 'icon-192.png',
-                tag: 'med-' + task.id
-            });
-        }
-    }
-}
-
-// --- Регистрация Service Worker ---
-async function registerSW() {
-    if ('serviceWorker' in navigator) {
-        try {
-            const registration = await navigator.serviceWorker.register('/sw.js');
-            console.log('SW registered:', registration.scope);
-            if (Notification.permission === 'granted') {
-                startNotificationChecker();
-            }
-        } catch (error) {
-            console.error('SW registration failed:', error);
-        }
-    }
-}
+// ==================== УВЕДОМЛЕНИЯ ====================
 
 function showToast(title, body, icon = 'info') {
     const container = document.getElementById('toast-container'); const toast = document.createElement('div');
