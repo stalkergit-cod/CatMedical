@@ -319,13 +319,11 @@
                 </div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Кличка *</label><input type="text" id="petName" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Барсик"></div>
                 
-                <!-- Группа: Возраст и Порода -->
                 <div class="grid grid-cols-2 gap-3">
                     <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Возраст</label><input type="text" id="petAge" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="2 года"></div>
                     <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Порода</label><input type="text" id="petBreed" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Британец"></div>
                 </div>
 
-                <!-- Группа: Рег. номер и Хронические болезни -->
                 <div class="grid grid-cols-2 gap-3">
                     <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Рег. номер / Чип</label><input type="text" id="petRegNumber" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="123456"></div>
                     <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Хронические / Аллергии</label><input type="text" id="petChronic" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="МКБ"></div>
@@ -423,9 +421,11 @@
 
                 <hr class="border-slate-100">
 
-                <button onclick="requestNotifPermission()" id="notif-perm-btn" class="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold text-sm hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
+                <!-- Обновленная кнопка запроса прав -->
+                <button onclick="requestNotificationPermission()" id="notif-perm-btn" class="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold text-sm hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
                     <i data-lucide="bell-ring" class="w-4 h-4"></i> Включить системные уведомления
                 </button>
+                
                 <button onclick="exportData()" class="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-semibold text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i> Экспорт данных (JSON)
                 </button>
@@ -476,13 +476,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
     setupSmartScroll();
     setupSwipeGestures();
-    startNotificationChecker();
     updateNotifButtonUI();
     checkFirstVisit();
     lucide.createIcons();
-    updateAppBadge(); // Устанавливаем бейдж при запуске
+    updateAppBadge();
+    registerSW(); // Запускаем SW и планировщик
     
-    // Разблокировка аудио при первом касании
     const unlockAudio = () => {
         if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -496,16 +495,11 @@ function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sta
 
 // ==================== БЕЙДЖ ИКОНКИ ПРИЛОЖЕНИЯ ====================
 function updateAppBadge() {
-    // Проверяем, поддерживает ли устройство Badging API
     if ('setAppBadge' in navigator) {
         const todayTasks = getTasksForDate(new Date());
         const pending = todayTasks.filter(t => !t.isCompleted).length;
-        
-        if (pending > 0) {
-            navigator.setAppBadge(pending).catch(e => console.log('Badge set failed', e));
-        } else {
-            navigator.clearAppBadge().catch(e => console.log('Badge clear failed', e));
-        }
+        if (pending > 0) navigator.setAppBadge(pending).catch(e => console.log('Badge set failed', e));
+        else navigator.clearAppBadge().catch(e => console.log('Badge clear failed', e));
     }
 }
 
@@ -579,29 +573,50 @@ function handleSwipe(startX, endX) {
     else if (diff < 0 && activeTabIdx > 0) switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
 }
 
-// ==================== УВЕДОМЛЕНИЯ И ЗВУК ====================
-function requestNotifPermission() {
-    if (!('Notification' in window)) { alert('Ваш браузер не поддерживает системные уведомления.'); return; }
-    Notification.requestPermission().then(permission => {
+// ==================== УВЕДОМЛЕНИЯ (НОВАЯ ЛОГИКА) ====================
+
+// --- Функция запроса разрешений ---
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        alert("Ваш браузер не поддерживает уведомления");
+        return;
+    }
+    if (Notification.permission === 'granted') {
+        alert("Уведомления уже разрешены!");
         updateNotifButtonUI();
-        if (permission === 'granted') { showToast('Уведомления включены', 'Теперь вы не пропустите время приема!', 'bell-ring'); playCompletionSound(); }
-    });
+        return;
+    }
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            alert("Уведомления разрешены! Теперь вы будете получать напоминания.");
+            updateNotifButtonUI();
+            registerSW(); 
+        }
+    } else {
+        alert("Уведомления заблокированы. Разрешите их в настройках браузера.");
+    }
 }
+
 function updateNotifButtonUI() {
     const btn = document.getElementById('notif-perm-btn');
     if ('Notification' in window && Notification.permission === 'granted') {
         btn.innerHTML = '<i data-lucide="bell-check" class="w-4 h-4"></i> Уведомления включены ✓';
         btn.classList.remove('bg-amber-50', 'text-amber-700', 'hover:bg-amber-100');
         btn.classList.add('bg-green-50', 'text-green-700', 'hover:bg-green-100');
-        btn.disabled = true; lucide.createIcons();
+        btn.disabled = true;
+        lucide.createIcons();
     }
 }
+
+// --- Обновленная функция проверки расписания ---
 function startNotificationChecker() {
     setInterval(() => {
         const now = new Date();
         const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         const dateStr = getDateStr(now);
         const tasks = getTasksForDate(now);
+
         tasks.forEach(task => {
             const alertId = `${dateStr}_${task.id}`;
             if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
@@ -609,17 +624,52 @@ function startNotificationChecker() {
                 const msg = `${task.petName}: ${task.name} (${task.dosage})`;
                 showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
                 playCompletionSound();
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    const options = { body: msg, icon: 'icon-192.png', badge: 'icon-192.png', vibrate: [200, 100, 200], tag: 'med-reminder-' + task.id, renotify: true };
-                    if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.ready.then(registration => registration.showNotification('Два хвоста: Пора дать лекарство!', options)).catch(err => new Notification('Два хвоста: Пора дать лекарство!', options));
-                    } else { new Notification('Два хвоста: Пора дать лекарство!', options); }
-                }
+                sendSystemNotification(task);
             }
         });
-        updateAppBadge(); // Обновляем бейдж каждую минуту
+        updateAppBadge();
     }, 30000);
 }
+
+// --- Отправка уведомления через Service Worker ---
+function sendSystemNotification(task) {
+    const title = `💊 Время лекарства: ${task.name}`;
+    const body = `Для ${task.petName}: ${task.dosage || ''} ${task.notes ? '(' + task.notes + ')' : ''}`;
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title: title,
+            body: body,
+            icon: 'icon-192.png',
+            tag: 'med-' + task.id
+        });
+    } else {
+        if (Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: 'icon-192.png',
+                tag: 'med-' + task.id
+            });
+        }
+    }
+}
+
+// --- Регистрация Service Worker ---
+async function registerSW() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('SW registered:', registration.scope);
+            if (Notification.permission === 'granted') {
+                startNotificationChecker();
+            }
+        } catch (error) {
+            console.error('SW registration failed:', error);
+        }
+    }
+}
+
 function showToast(title, body, icon = 'info') {
     const container = document.getElementById('toast-container'); const toast = document.createElement('div');
     toast.className = 'toast-enter bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3 w-full max-w-sm pointer-events-auto cursor-pointer';
@@ -680,7 +730,7 @@ function openAddPetModal(petId=null) {
         if(p){ 
             document.getElementById('editPetId').value=p.id; 
             document.getElementById('petName').value=p.name; 
-            document.getElementById('petAge').value = p.age || ''; // НОВОЕ
+            document.getElementById('petAge').value = p.age || ''; 
             document.getElementById('petBreed').value=p.breed||''; 
             document.getElementById('petRegNumber').value = p.regNumber || '';
             document.getElementById('petChronic').value = p.chronic || '';
@@ -699,7 +749,7 @@ function savePet(e) {
     const d={
         id, 
         name:document.getElementById('petName').value.trim(), 
-        age: document.getElementById('petAge').value.trim(), // НОВОЕ
+        age: document.getElementById('petAge').value.trim(), 
         breed:document.getElementById('petBreed').value.trim(), 
         regNumber: document.getElementById('petRegNumber').value.trim(), 
         chronic: document.getElementById('petChronic').value.trim(),   
@@ -725,7 +775,6 @@ function renderPets() {
         const mc=state.meds.filter(m=>m.petId===p.id).length; 
         const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; 
         
-        // Формируем подзаголовок (Возраст + Порода + Рег.номер + Назначения)
         let subtitleParts = [];
         if (p.age) subtitleParts.push(p.age);
         if (p.breed) subtitleParts.push(p.breed);
@@ -837,7 +886,7 @@ function toggleTask(ds, mId) {
     if(!state.completions[ds]) state.completions[ds]={}; const willBeDone=!state.completions[ds][mId]; state.completions[ds][mId]=willBeDone;
     if(willBeDone) playCompletionSound();
     if(!willBeDone){delete state.completions[ds][mId]; if(!Object.keys(state.completions[ds]).length)delete state.completions[ds];}
-    saveData(); renderSchedule(); updateStats(); updateAppBadge(); // Обновляем бейдж при отметке!
+    saveData(); renderSchedule(); updateStats(); updateAppBadge();
 }
 function resetDayCompletions() { const ds=getDateStr(selectedDate); if(state.completions[ds]&&confirm('Сбросить день?')){delete state.completions[ds]; saveData(); renderSchedule(); updateStats(); updateAppBadge();} }
 function updateStats() { document.getElementById('stat-pets-count').textContent=state.pets.length; document.getElementById('stat-active-meds').textContent=state.meds.length; document.getElementById('stat-completed-today').textContent=getTasksForDate(new Date()).filter(t=>t.isCompleted).length; }
@@ -849,17 +898,6 @@ function clearAllData() { if(confirm("Удалить ВСЕ данные?")){loc
 
 // ==================== ОБЩИЙ РЕНДЕР ====================
 function renderAll() { renderPets(); renderMeds(); renderSchedule(); updateStats(); lucide.createIcons(); updateAppBadge(); }
-</script>
-
-<!-- PWA: Регистрация Service Worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => console.log('SW зарегистрирован: ', registration.scope))
-        .catch(err => console.log('SW ошибка регистрации: ', err));
-    });
-  }
 </script>
 
 </body>
