@@ -224,6 +224,16 @@
             </div>
             <div id="meds-list-container" class="space-y-3"></div>
         </div>
+
+        <div id="content-appointments" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-lg">Приемы у врача</h3>
+                <button onclick="openAddAppointmentModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Записаться
+                </button>
+            </div>
+            <div id="appointments-list-container" class="space-y-3"></div>
+        </div>
     </main>
 
     <!-- Контейнер для In-App уведомлений (Toast) -->
@@ -231,7 +241,7 @@
 
     <!-- Нижняя навигация -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 py-2 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:max-w-md md:mx-auto">
-        <div class="grid grid-cols-3 gap-1 text-xs font-medium">
+        <div class="grid grid-cols-4 gap-1 text-xs font-medium">
             <button onclick="switchTab('today', 0)" id="tab-today" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-indigo-600 transition-all bg-indigo-50/70">
                 <i data-lucide="check-square" class="w-5 h-5"></i><span>Расписание</span>
             </button>
@@ -240,6 +250,9 @@
             </button>
             <button onclick="switchTab('meds', 2)" id="tab-meds" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-900 transition-all">
                 <i data-lucide="pill" class="w-5 h-5"></i><span>Лекарства</span>
+            </button>
+            <button onclick="switchTab('appointments', 3)" id="tab-appointments" class="tab-btn py-2 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 hover:text-slate-900 transition-all">
+                <i data-lucide="calendar-clock" class="w-5 h-5"></i><span>Приемы</span>
             </button>
         </div>
     </nav>
@@ -445,6 +458,57 @@
                     <i data-lucide="trash-2" class="w-4 h-4"></i> Удалить все данные
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ДОБАВИТЬ ПРИЕМ К ВРАЧУ -->
+    <div id="addAppointmentModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl fade-in">
+            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
+                <h3 id="appointmentModalTitle" class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="calendar-clock" class="text-indigo-600 w-5 h-5"></i> Запись на прием</h3>
+                <button onclick="closeModal('addAppointmentModal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="appointmentForm" onsubmit="saveAppointment(event)" class="p-5 space-y-4">
+                <input type="hidden" id="editAppointmentId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Питомец</label>
+                    <select id="appointmentPetId" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
+                        <option value="" disabled selected>Сначала добавьте питомца</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Дата приема</label>
+                    <input type="date" id="appointmentDate" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Время приема</label>
+                    <input type="time" id="appointmentTime" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Название клиники</label>
+                    <input type="text" id="appointmentClinic" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: Айболит">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Адрес клиники</label>
+                    <input type="text" id="appointmentAddress" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: ул. Ленина, 10">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Фамилия врача</label>
+                    <input type="text" id="appointmentDoctor" required class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: Иванов">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Должность врача</label>
+                    <input type="text" id="appointmentDoctorTitle" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Например: Хирург">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Заметки к приему</label>
+                    <textarea id="appointmentNotes" rows="2" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" placeholder="Например: взять результаты анализов..."></textarea>
+                </div>
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeModal('addAppointmentModal')" class="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Отмена</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
 
