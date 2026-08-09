@@ -1224,3 +1224,410 @@ function renderAll() {
     lucide.createIcons();
     updateAppBadge();
 }
+
+// ==================== БЕЙДЖ ИКОНКИ ПРИЛОЖЕНИЯ ====================
+function updateAppBadge() {
+    if ('setAppBadge' in navigator) {
+        const todayTasks = getTasksForDate(new Date());
+        const pending = todayTasks.filter(t => !t.isCompleted).length;
+        if (pending > 0) navigator.setAppBadge(pending).catch(e => console.log('Badge set failed', e));
+        else navigator.clearAppBadge().catch(e => console.log('Badge clear failed', e));
+    }
+}
+
+// ==================== УСТАНОВКА PWA ====================
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installAppBtn').classList.remove('hidden');
+    showToast('Приложение готово к установке!', 'Нажмите кнопку "Установить" в приветственном окне.', 'download');
+});
+
+function triggerPwaInstall() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                showToast('Установка началась', 'Ищите иконку на главном экране!', 'check-circle');
+                closeWelcomeModal();
+            } else {
+                showToast('Установка отменена', 'Вы можете установить приложение позже через меню браузера.', 'info');
+            }
+            deferredPrompt = null;
+            document.getElementById('installAppBtn').classList.add('hidden');
+        });
+    } else {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isChrome = /Chrome/i.test(navigator.userAgent);
+        if (isAndroid && isChrome) {
+            showToast('Ручная установка', 'Нажмите на три точки в правом верхнем углу Chrome и выберите "Установить приложение" или "Добавить на главный экран".', 'info');
+        } else {
+            showToast('Как установить', 'Откройте меню браузера и выберите "Добавить на главный экран".', 'info');
+        }
+    }
+}
+
+// ==================== ТЕМЫ ОФОРМЛЕНИЯ ====================
+function loadTheme() { const savedTheme = localStorage.getItem(THEME_KEY) || 'default'; applyTheme(savedTheme); }
+function setTheme(themeName) { localStorage.setItem(THEME_KEY, themeName); applyTheme(themeName); showToast('Тема изменена', 'Приложение обновлено', 'palette'); }
+function applyTheme(themeName) {
+    document.body.classList.remove('theme-default', 'theme-green', 'theme-pink', 'theme-amber');
+    document.body.classList.add('theme-' + themeName);
+    document.getElementById('meta-theme-color').setAttribute('content', themeColors[themeName]);
+    document.querySelectorAll('.theme-option').forEach(el => {
+        if (el.dataset.theme === themeName) { el.classList.add('border-slate-800', 'scale-105'); el.classList.remove('border-transparent'); } 
+        else { el.classList.remove('border-slate-800', 'scale-105'); el.classList.add('border-transparent'); }
+    });
+}
+
+// ==================== ПРИВЕТСТВЕННОЕ ОКНО ====================
+function checkFirstVisit() {
+    if (!localStorage.getItem(WELCOME_KEY)) {
+        openModal('welcomeModal');
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isStandalone) return;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) document.getElementById('iosInstallHint').classList.remove('hidden');
+        else if (deferredPrompt) document.getElementById('installAppBtn').classList.remove('hidden');
+    }
+}
+function closeWelcomeModal() { closeModal('welcomeModal'); localStorage.setItem(WELCOME_KEY, 'true'); }
+
+// ==================== СВАЙПЫ И ЖЕСТЫ ====================
+function setupSwipeGestures() {
+    const container = document.getElementById('swipe-container'); let touchStartX = 0; let touchEndX = 0;
+    container.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    container.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(touchStartX, touchEndX); }, { passive: true });
+}
+function handleSwipe(startX, endX) {
+    const diff = startX - endX; if (Math.abs(diff) < 80) return;
+    if (diff > 0 && activeTabIdx < TABS.length - 1) switchTab(TABS[activeTabIdx + 1], activeTabIdx + 1);
+    else if (diff < 0 && activeTabIdx > 0) switchTab(TABS[activeTabIdx - 1], activeTabIdx - 1);
+}
+
+// ==================== УВЕДОМЛЕНИЯ (НОВАЯ ЛОГИКА) ====================
+
+// --- Функция запроса разрешений ---
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        alert("Ваш браузер не поддерживает уведомления");
+        return;
+    }
+    if (Notification.permission === 'granted') {
+        alert("Уведомления уже разрешены!");
+        updateNotifButtonUI();
+        return;
+    }
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            alert("Уведомления разрешены! Теперь вы будете получать напоминания.");
+            updateNotifButtonUI();
+            registerSW(); 
+        }
+    } else {
+        alert("Уведомления заблокированы. Разрешите их в настройках браузера.");
+    }
+}
+
+function updateNotifButtonUI() {
+    const btn = document.getElementById('notif-perm-btn');
+    if ('Notification' in window && Notification.permission === 'granted') {
+        btn.innerHTML = '<i data-lucide="bell-check" class="w-4 h-4"></i> Уведомления включены ✓';
+        btn.classList.remove('bg-amber-50', 'text-amber-700', 'hover:bg-amber-100');
+        btn.classList.add('bg-green-50', 'text-green-700', 'hover:bg-green-100');
+        btn.disabled = true;
+        lucide.createIcons();
+    }
+}
+
+// --- Обновленная функция проверки расписания ---
+function startNotificationChecker() {
+    setInterval(() => {
+        const now = new Date();
+        const currentTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const dateStr = getDateStr(now);
+        const tasks = getTasksForDate(now);
+
+        tasks.forEach(task => {
+            const alertId = `${dateStr}_${task.id}`;
+            if (task.time === currentTimeStr && !task.isCompleted && !firedAlerts.has(alertId)) {
+                firedAlerts.add(alertId);
+                const msg = `${task.petName}: ${task.name} (${task.dosage})`;
+                showToast('Пора дать лекарство! 🕒', msg, 'alarm-clock');
+                playCompletionSound();
+                sendSystemNotification(task);
+            }
+        });
+        updateAppBadge();
+    }, 30000);
+}
+
+// --- Отправка уведомления через Service Worker ---
+function sendSystemNotification(task) {
+    const title = `💊 Время лекарства: ${task.name}`;
+    const body = `Для ${task.petName}: ${task.dosage || ''} ${task.notes ? '(' + task.notes + ')' : ''}`;
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title: title,
+            body: body,
+            icon: 'icon-192.png',
+            tag: 'med-' + task.id
+        });
+    } else {
+        if (Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: 'icon-192.png',
+                tag: 'med-' + task.id
+            });
+        }
+    }
+}
+
+// --- Регистрация Service Worker ---
+async function registerSW() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('SW registered:', registration.scope);
+            if (Notification.permission === 'granted') {
+                startNotificationChecker();
+            }
+        } catch (error) {
+            console.error('SW registration failed:', error);
+        }
+    }
+}
+
+function showToast(title, body, icon = 'info') {
+    const container = document.getElementById('toast-container'); const toast = document.createElement('div');
+    toast.className = 'toast-enter bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3 w-full max-w-sm pointer-events-auto cursor-pointer';
+    toast.onclick = () => removeToast(toast);
+    toast.innerHTML = `<div class="bg-indigo-100 text-indigo-600 p-2 rounded-xl flex-shrink-0"><i data-lucide="${icon}" class="w-5 h-5"></i></div><div class="flex-grow"><h4 class="font-bold text-sm text-slate-900">${title}</h4><p class="text-xs text-slate-500 mt-0.5">${body}</p></div>`;
+    container.appendChild(toast); lucide.createIcons(); setTimeout(() => removeToast(toast), 5000);
+}
+function removeToast(toastElement) { if (!toastElement.parentNode) return; toastElement.classList.remove('toast-enter'); toastElement.classList.add('toast-exit'); setTimeout(() => toastElement.remove(), 300); }
+function playCompletionSound() {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime); gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.15); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {}
+}
+
+// ==================== НАВИГАЦИЯ ====================
+function switchTab(tabName, idx = null) {
+    if (idx !== null) activeTabIdx = idx; else activeTabIdx = TABS.indexOf(tabName);
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.remove('text-indigo-600', 'bg-indigo-50/70'); btn.classList.add('text-slate-500');
+        if (i === activeTabIdx) { btn.classList.add('text-indigo-600', 'bg-indigo-50/70'); btn.classList.remove('text-slate-500'); }
+    });
+    document.querySelectorAll('main > div').forEach(div => { div.classList.add('hidden'); div.classList.remove('fade-in'); });
+    const target = document.getElementById(`content-${tabName}`); target.classList.remove('hidden'); void target.offsetWidth; target.classList.add('fade-in');
+    window.scrollTo({ top: 0, behavior: 'smooth' }); lucide.createIcons();
+}
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-open'); lucide.createIcons(); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-open'); }
+function setupSmartScroll() { let lY = window.scrollY; const c = document.getElementById('calendar-wrapper'); window.addEventListener('scroll', () => { const cY = window.scrollY; if(cY > lY && cY > 150) c.classList.add('calendar-hidden'); else c.classList.remove('calendar-hidden'); lY = cY; }, {passive:true}); }
+
+// ==================== КАЛЕНДАРЬ ====================
+function renderCalendar() {
+    const s = document.getElementById('calendar-strip'); s.innerHTML = ''; const t = new Date();
+    for(let i=-3; i<=3; i++) { const d=new Date(selectedDate); d.setDate(d.getDate()+i); const isT=d.toDateString()===t.toDateString(); const isS=d.toDateString()===selectedDate.toDateString();
+    const b=document.createElement('button'); b.onclick=()=>{selectedDate=d; renderCalendar(); renderSchedule();};
+    b.className=`flex flex-col items-center p-1.5 rounded-xl transition-all ${isS?'bg-indigo-600 text-white shadow-md scale-105':'hover:bg-slate-100 text-slate-600'}`;
+    b.innerHTML=`<span class="text-[10px] font-medium ${isS?'text-indigo-200':'text-slate-400'}">${DAYS_MAP[getJsDayToEuDay(d.getDay())]}</span><span class="text-lg font-bold ${isT&&!isS?'text-indigo-600':''}">${d.getDate()}</span>${isT&&!isS?'<div class="w-1 h-1 bg-indigo-600 rounded-full mt-0.5"></div>':''}`;
+    s.appendChild(b); }
+}
+function getJsDayToEuDay(d) { return d===0?7:d; }
+function getDateStr(d) { return d.toISOString().split('T')[0]; }
+
+// ==================== ПИТОМЦЫ ====================
+function initEmojiSelector() { const c=document.getElementById('emoji-selector'); EMOJIS.forEach(e=>{ const b=document.createElement('button'); b.type='button'; b.className='text-2xl p-2 rounded-lg hover:bg-slate-100 transition-colors border-2 border-transparent focus:outline-none'; b.textContent=e; b.onclick=()=>{currentPetAvatar=e; currentPetPhoto=null; updateAvatarPreview(); document.getElementById('clear-photo-btn').classList.add('hidden');}; c.appendChild(b); }); }
+function updateAvatarPreview() { const p=document.getElementById('avatar-preview'); if(currentPetPhoto){p.style.backgroundImage=`url(${currentPetPhoto})`;p.textContent='';document.getElementById('clear-photo-btn').classList.remove('hidden');}else{p.style.backgroundImage='none';p.textContent=currentPetAvatar;document.getElementById('clear-photo-btn').classList.add('hidden');} }
+function handlePhotoUpload(input) { const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){ const img=new Image(); img.onload=function(){ const c=document.createElement('canvas'); let w=img.width,h=img.height; if(w>h){if(w>200){h*=200/w;w=200;}}else{if(h>200){w*=200/h;h=200;}} c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); currentPetPhoto=c.toDataURL('image/jpeg',0.7); currentPetAvatar=''; updateAvatarPreview(); }; img.src=e.target.result; }; r.readAsDataURL(f); }
+function clearSelectedPhoto() { currentPetPhoto=null; currentPetAvatar='🐾'; updateAvatarPreview(); document.getElementById('petPhotoInput').value=''; }
+
+function openAddPetModal(petId=null) {
+    document.getElementById('petForm').reset(); document.getElementById('editPetId').value=''; document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Новый питомец'; currentPetPhoto=null; currentPetAvatar='🐾'; updateAvatarPreview();
+    if(petId){ 
+        const p=state.pets.find(x=>x.id===petId); 
+        if(p){ 
+            document.getElementById('editPetId').value=p.id; 
+            document.getElementById('petName').value=p.name; 
+            document.getElementById('petAge').value = p.age || ''; 
+            document.getElementById('petBreed').value=p.breed||''; 
+            document.getElementById('petRegNumber').value = p.regNumber || '';
+            document.getElementById('petChronic').value = p.chronic || '';
+            document.getElementById('petNotes').value = p.notes || '';
+            document.getElementById('petModalTitle').innerHTML='<i data-lucide="cat" class="text-indigo-600 w-5 h-5"></i> Редактирование'; 
+            if(p.photo){currentPetPhoto=p.photo;currentPetAvatar='';}else{currentPetAvatar=p.avatar;currentPetPhoto=null;} 
+            updateAvatarPreview(); 
+        } 
+    }
+    openModal('addPetModal');
+}
+function savePet(e) { 
+    e.preventDefault(); 
+    const id=document.getElementById('editPetId').value||'pet_'+Date.now(); 
+    const existing = state.pets.find(p => p.id === id);
+    const d={
+        id, 
+        name:document.getElementById('petName').value.trim(), 
+        age: document.getElementById('petAge').value.trim(), 
+        breed:document.getElementById('petBreed').value.trim(), 
+        regNumber: document.getElementById('petRegNumber').value.trim(), 
+        chronic: document.getElementById('petChronic').value.trim(),   
+        notes: document.getElementById('petNotes').value.trim(),       
+        avatar:currentPetAvatar, 
+        photo:currentPetPhoto,
+        diary: existing && existing.diary ? existing.diary : [] 
+    }; 
+    const i=state.pets.findIndex(p=>p.id===id); 
+    if(i>-1) state.pets[i]=d; 
+    else state.pets.push(d); 
+    saveData(); 
+    renderAll(); 
+    closeModal('addPetModal'); 
+}
+function deletePet(id) { if(!confirm('Удалить питомца и все его назначения?'))return; state.pets=state.pets.filter(p=>p.id!==id); state.meds=state.meds.filter(m=>m.petId!==id); saveData(); renderAll(); }
+
+function renderPets() {
+    const c=document.getElementById('pets-list-container');
+    if(!state.pets.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">🐾</p><p>Добавьте первого питомца!</p></div>';return;}
+    
+    c.innerHTML=state.pets.map(p=>{
+        const mc=state.meds.filter(m=>m.petId===p.id).length; 
+        const a=p.photo?`<div class="w-12 h-12 rounded-xl bg-cover bg-center shadow-inner" style="background-image:url(${p.photo})"></div>`:`<div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">${p.avatar}</div>`; 
+        
+        let subtitleParts = [];
+        if (p.age) subtitleParts.push(p.age);
+        if (p.breed) subtitleParts.push(p.breed);
+        if (!subtitleParts.length) subtitleParts.push('Без описания');
+        if (p.regNumber) subtitleParts.push(`№${p.regNumber}`);
+        subtitleParts.push(`${mc} назнач.`);
+        let subtitle = subtitleParts.join(' • ');
+
+        let chronicBadge = '';
+        if (p.chronic) {
+            chronicBadge = `<div class="mt-1.5 inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md text-[10px] border border-amber-100 font-medium">
+                <i data-lucide="alert-triangle" class="w-3 h-3"></i> ${p.chronic}
+            </div>`;
+        }
+
+        return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+            ${a}
+            <div class="flex-grow overflow-hidden">
+                <h4 class="font-bold text-slate-900 truncate">${p.name}</h4>
+                <p class="text-xs text-slate-500 truncate">${subtitle}</p>
+                ${chronicBadge}
+            </div>
+            <div class="flex gap-1 flex-shrink-0">
+                <button onclick="openPetDiary('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Дневник"><i data-lucide="notebook-pen" class="w-5 h-5"></i></button>
+                <button onclick="openAddPetModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1" title="Редактировать"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                <button onclick="deletePet('${p.id}')" class="text-slate-400 hover:text-red-500 p-1" title="Удалить"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+        </div>`; 
+    }).join('');
+    lucide.createIcons();
+}
+
+// ==================== ДНЕВНИК ПИТОМЦА ====================
+function openPetDiary(petId) {
+    currentDiaryPetId = petId;
+    const p = state.pets.find(x => x.id === petId);
+    if (!p) return;
+    document.getElementById('diaryPetName').textContent = p.name;
+    document.getElementById('diaryInput').value = '';
+    renderDiaryEntries(petId);
+    openModal('petDiaryModal');
+}
+function addDiaryEntry() {
+    const text = document.getElementById('diaryInput').value.trim();
+    if (!text) return;
+    const p = state.pets.find(x => x.id === currentDiaryPetId);
+    if (!p) return;
+    if (!p.diary) p.diary = [];
+    const now = new Date();
+    const dateStr = `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    p.diary.unshift({ id: 'note_'+Date.now(), date: dateStr, text: text });
+    saveData();
+    document.getElementById('diaryInput').value = '';
+    renderDiaryEntries(currentDiaryPetId);
+    showToast('Запись добавлена', 'Дневник обновлен', 'notebook-pen');
+}
+function deleteDiaryEntry(petId, noteId) {
+    const p = state.pets.find(x => x.id === petId);
+    if (p && p.diary) { p.diary = p.diary.filter(n => n.id !== noteId); saveData(); renderDiaryEntries(petId); }
+}
+function renderDiaryEntries(petId) {
+    const p = state.pets.find(x => x.id === petId);
+    const c = document.getElementById('diaryList');
+    if (!p || !p.diary || !p.diary.length) { c.innerHTML = '<p class="text-center text-slate-400 text-sm py-6">Пока нет записей.<br>Начните вести дневник здоровья!</p>'; return; }
+    c.innerHTML = p.diary.map(n => `
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 relative">
+            <p class="text-xs text-indigo-600 font-semibold mb-1">${n.date}</p>
+            <p class="text-sm text-slate-700 whitespace-pre-wrap break-words pr-6">${n.text}</p>
+            <button onclick="deleteDiaryEntry('${petId}', '${n.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+    `).join('');
+    lucide.createIcons();
+}
+
+// ==================== ЛЕКАРСТВА ====================
+function openAddMedModal(medId=null) {
+    document.getElementById('medForm').reset(); document.getElementById('editMedId').value=''; document.getElementById('medModalTitle').innerHTML='<i data-lucide="pill" class="text-indigo-600 w-5 h-5"></i> Новое назначение';
+    const s=document.getElementById('medPetId'); s.innerHTML=!state.pets.length?'<option value="" disabled selected>Сначала добавьте питомца</option>':state.pets.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    if(medId){ const m=state.meds.find(x=>x.id===medId); if(m){ document.getElementById('editMedId').value=m.id; s.value=m.petId; document.getElementById('medName').value=m.name; document.getElementById('medDosage').value=m.dosage; document.getElementById('medTime').value=m.time; document.getElementById('medNotes').value=m.notes||''; document.querySelector(`input[name="medType"][value="${m.type}"]`).checked=true; document.querySelectorAll('input[name="medDays"]').forEach(cb=>{cb.checked=m.days.includes(parseInt(cb.value));}); document.getElementById('medModalTitle').innerHTML='<i data-lucide="pill" class="text-indigo-600 w-5 h-5"></i> Редактирование'; } }
+    openModal('addMedModal');
+}
+function selectAllDays(st) { document.querySelectorAll('input[name="medDays"]').forEach(cb=>cb.checked=st); }
+function saveMedication(e) { e.preventDefault(); const sd=Array.from(document.querySelectorAll('input[name="medDays"]:checked')).map(cb=>parseInt(cb.value)); if(!sd.length){alert("Выберите день!");return;} if(!state.pets.length){alert("Добавьте питомца!");return;} const id=document.getElementById('editMedId').value||'med_'+Date.now(); const d={id, petId:document.getElementById('medPetId').value, name:document.getElementById('medName').value.trim(), type:document.querySelector('input[name="medType"]:checked').value, dosage:document.getElementById('medDosage').value.trim(), time:document.getElementById('medTime').value, notes:document.getElementById('medNotes').value.trim(), days:sd}; const i=state.meds.findIndex(m=>m.id===id); if(i>-1)state.meds[i]=d; else state.meds.push(d); saveData(); renderAll(); closeModal('addMedModal'); }
+function deleteMed(id) { if(!confirm('Отменить назначение?'))return; state.meds=state.meds.filter(m=>m.id!==id); saveData(); renderAll(); }
+
+function renderMeds() {
+    const c=document.getElementById('meds-list-container');
+    if(!state.meds.length){c.innerHTML='<div class="text-center py-10 text-slate-400"><p class="text-4xl mb-2">💊</p><p>Нет назначений.</p></div>';return;}
+    c.innerHTML=state.meds.map(m=>{ const p=state.pets.find(x=>x.id===m.petId); const pn=p?p.name:'<span class="text-red-400 line-through">Удален</span>'; const ds=m.days.map(d=>DAYS_MAP[d]).join(', '); const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[m.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><div class="flex justify-between items-start"><div><h4 class="font-bold text-slate-900">${ti} ${m.name}</h4><p class="text-xs text-slate-500 mt-1">Для: ${pn}</p></div><div class="flex gap-2"><button onclick="openAddMedModal('${m.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteMed('${m.id}')" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div><div class="mt-3 flex flex-wrap gap-2 text-[11px]"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium">${m.dosage}</span><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium">🕐 ${m.time}</span><span class="bg-slate-50 text-slate-500 px-2 py-1 rounded-md border border-dashed border-slate-200">${ds}</span></div>${m.notes?`<div class="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg flex gap-2"><span>💡</span><span>${m.notes}</span></div>`:''}</div>`; }).join('');
+    lucide.createIcons();
+}
+
+// ==================== РАСПИСАНИЕ И ПРОГРЕСС ====================
+function getTasksForDate(date) {
+    const ds=getDateStr(date); const ed=getJsDayToEuDay(date.getDay());
+    return state.meds.filter(m=>m.days.includes(ed)).map(m=>{ const p=state.pets.find(x=>x.id===m.petId); return {...m, petName:p?p.name:'Удален', petAvatar:p?.avatar||'❓', isCompleted:state.completions[ds]?.[m.id]===true}; }).sort((a,b)=>a.time.localeCompare(b.time));
+}
+function renderSchedule() {
+    const ds=getDateStr(selectedDate); const tasks=getTasksForDate(selectedDate); const c=document.getElementById('today-tasks-container');
+    const isT=getDateStr(new Date())===ds; document.getElementById('progress-title').textContent=isT?'План на сегодня':`План на ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]}`;
+    const cc=tasks.filter(t=>t.isCompleted).length; const tc=tasks.length; const p=tc===0?0:Math.round((cc/tc)*100);
+    document.getElementById('treatment-progress-text').textContent=tc===0?'Нет процедур':`Выполнено ${cc} из ${tc}`;
+    document.getElementById('progress-percent').textContent=`${p}%`; document.getElementById('progress-bar').style.width=`${p}%`;
+    if(!tc){c.innerHTML='<div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><p class="text-3xl mb-2">😎</p><p>Свободный день!</p></div>';return;}
+    c.innerHTML=tasks.map(t=>{ const ti={injection:'💉',pill:'💊',liquid:'🧪',ointment:'🧴'}[t.type]||'💊'; return `<div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all ${t.isCompleted?'opacity-60 bg-slate-50':''}"><button onclick="toggleTask('${ds}','${t.id}')" class="w-8 h-8 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${t.isCompleted?'bg-green-500 border-green-500 text-white':'border-slate-300 hover:border-indigo-400'}">${t.isCompleted?'<i data-lucide="check" class="w-4 h-4"></i>':''}</button><div class="flex-grow ${t.isCompleted?'line-through text-slate-500':''}"><div class="font-semibold text-sm text-slate-900">${ti} ${t.name} <span class="text-xs font-normal text-slate-500">(${t.dosage})</span></div><div class="text-xs text-slate-500 mt-0.5">${t.petAvatar} ${t.petName} • 🕐 ${t.time}</div>${t.notes?`<div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-2 flex gap-1.5"><span>💡</span><span>${t.notes}</span></div>`:''}</div></div>`; }).join('');
+    lucide.createIcons();
+}
+function toggleTask(ds, mId) {
+    if(!state.completions[ds]) state.completions[ds]={}; const willBeDone=!state.completions[ds][mId]; state.completions[ds][mId]=willBeDone;
+    if(willBeDone) playCompletionSound();
+    if(!willBeDone){delete state.completions[ds][mId]; if(!Object.keys(state.completions[ds]).length)delete state.completions[ds];}
+    saveData(); renderSchedule(); updateStats(); updateAppBadge();
+}
+function resetDayCompletions() { const ds=getDateStr(selectedDate); if(state.completions[ds]&&confirm('Сбросить день?')){delete state.completions[ds]; saveData(); renderSchedule(); updateStats(); updateAppBadge();} }
+function updateStats() { document.getElementById('stat-pets-count').textContent=state.pets.length; document.getElementById('stat-active-meds').textContent=state.meds.length; document.getElementById('stat-completed-today').textContent=getTasksForDate(new Date()).filter(t=>t.isCompleted).length; }
+
+// ==================== НАСТРОЙКИ ====================
+function exportData() { const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`dva_hvosta_${getDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(u); }
+function importData(ev) { const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(e){try{const s=JSON.parse(e.target.result);if(s.pets&&s.meds){state=s;saveData();renderAll();closeModal('settingsModal');alert("Импортировано!");}else alert("Ошибка формата");}catch(e){alert("Ошибка чтения");}}; r.readAsText(f); ev.target.value=''; }
+function clearAllData() { if(confirm("Удалить ВСЕ данные?")){localStorage.removeItem(STORAGE_KEY);state={pets:[],meds:[],completions:{}};renderAll();closeModal('settingsModal');updateAppBadge();} }
+
+// ==================== ОБЩИЙ РЕНДЕР ====================
+function renderAll() { renderPets(); renderMeds(); renderSchedule(); updateStats(); lucide.createIcons(); updateAppBadge(); }
+
